@@ -37,7 +37,7 @@ function globeOverlay() {
         width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
         canvasPadding, globePadding, colWidth, rowHeight, padding, gutter, baselineOffset,
         scales, scale, topoFile, clipAngle, presets,
-        λA, φA, γA, λB, φB, γB, rotation, projection, canvas, context, path,
+        λA, φA, γA, λB, φB, γB, γAtmp, γBtmp, γStart, rotation, projection, canvas, context, path,
         posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, toDeg,
         momentum, flag, shiftFlag, shiftToggle, altFlag,
         toggleGradient, switchColors, showGlobeB, showBorders, showLakes, showHelp, showCoastlines;
@@ -254,7 +254,9 @@ function globeOverlay() {
                 λB = λB - xRel / r;
                 φB = φB + yRel / r;
             }
-            if (altFlag === 1) {γA = calcTan(); γB = calcTan();}
+            if (altFlag === 1) {var diff = calcTan()- γStart;
+                γA =  γAtmp + diff;
+                γB =  γBtmp + diff;}
         }
         if (shiftFlag === 0) {
             if (shiftToggle === 0) {
@@ -262,14 +264,14 @@ function globeOverlay() {
                     λA = λA - xRel / r;
                     φA = φA + yRel / r;
                 }
-                if (altFlag === 1) {γA = calcTan();}
+                if (altFlag === 1) {γA =  γAtmp + calcTan()- γStart;}
             }
             if (shiftToggle === 1) {
                 if (altFlag === 0) {
                     λB = λB - xRel / r;
                     φB = φB + yRel / r;
                 }
-                if (altFlag === 1) {γB = calcTan();}
+                if (altFlag === 1) {γB =  γBtmp + calcTan()- γStart;}
             }
         }
     }
@@ -339,7 +341,12 @@ function globeOverlay() {
             shiftFlag = 1;
             shiftToggle = toggle(shiftToggle);
         }
-        if (evt.keyCode === 18) {altFlag = 1;}                              // Alt
+        if (evt.keyCode === 18) {                                           // Alt
+            altFlag = 1;
+            if (γAtmp === undefined || γBtmp === undefined || γStart === undefined) {
+                γAtmp = γA; γBtmp = γB;  γStart = calcTan();
+            }
+        }
         if (evt.keyCode === 82 || evt.keyCode === 48) {                     // 0/R
             xRel = 0;
             yRel = 0;
@@ -365,11 +372,12 @@ function globeOverlay() {
     function keyUp(evt) {
         evt = evt || window.event;
         if (evt.keyCode == 16) {shiftFlag = 0;}                             // Shift
-        if (evt.keyCode === 18) {altFlag = 0; xRel = 0; yRel = 0;}          // Alt
+        if (evt.keyCode === 18) {                                           // Alt
+            altFlag = 0;
+            xRel = 0; yRel = 0; γAtmp = undefined; γBtmp = undefined; γStart = undefined;  }
     }
 
     function drawglobe(λ, φ, γ, fillColor) {
-        // path = undefined;
         rotation = [-λ, -φ, γ];
         // tweak projections here
         projection = d3.geo.orthographic().rotate(rotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
