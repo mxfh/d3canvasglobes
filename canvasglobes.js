@@ -34,7 +34,7 @@ function globeOverlay() {
         fillColorA, fillColorB, textColor, gradient,
         width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
         canvasPadding, globePadding, colWidth, rowHeight, padding, gutter, baselineOffset,
-        scales, scale, topoFile, clipAngle, presets,
+        scales, scale, urlPath, topoFile, clipAngle, presets,
         λA, φA, γA, λB, φB, γB, rotation, projection, canvas, context, path,
         posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel,
         mouseFactor, momentum, flag, shiftFlag, shiftToggle, altFlag,
@@ -148,7 +148,9 @@ function globeOverlay() {
     clipAngle = 88;
     zoomMin = 10;
     zoomMax = 10000;
-    scales = ["ne_110m_world.json", "ne_50m_world.json", "ne_10m_world.json"];
+// keeping the json files for gh-pages in the master branch
+    urlPath = "https://raw.github.com/mxfh/d3canvasglobes/master/"
+    scales = [urlPath + "ne_110m_world.json", urlPath + "ne_50m_world.json", urlPath + "ne_10m_world.json"];
     topoFile = scales[0];
     scale = 0;
 // λ (longitude) and φ (latitude) of projection center, rotation angle (γ) counter-clockwise in degrees
