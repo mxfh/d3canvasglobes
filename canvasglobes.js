@@ -30,14 +30,16 @@
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 
 function globeOverlay() {
+    d3.select("body").append("div").attr("id", "map");
+    d3.selectAll("div").append("canvas").attr("id", "canvas1");
     var element, globe, land, coastlines, borders, lakes,
         fillColorA, fillColorB, textColor, gradient,
         width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
         canvasPadding, globePadding, colWidth, rowHeight, padding, gutter, baselineOffset,
         scales, scale, topoFile, clipAngle, presets,
         λA, φA, γA, λB, φB, γB, rotation, projection, canvas, context, path,
-        posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel,
-        mouseFactor, momentum, flag, shiftFlag, shiftToggle, altFlag,
+        posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, toDeg,
+        momentum, flag, shiftFlag, shiftToggle, altFlag,
         toggleGradient, switchColors, showGlobeB, showBorders, showLakes, showHelp, showCoastlines;
 
     //initialize Layout
@@ -81,6 +83,7 @@ function globeOverlay() {
     gutter = 15;
     origin = [canvasPadding, canvasPadding];
     baselineOffset = 9;
+    toDeg = 180/Math.PI;
     function getX(column) {
         return origin[0] + (colWidth + gutter) * column;
     }
@@ -143,7 +146,6 @@ function globeOverlay() {
     showGlobeB = 1;
     showHelp = 1;
     switchColors = 0;
-    mouseFactor = 80;
     momentum = 1;
     clipAngle = 88;
     zoomMin = 10;
@@ -154,9 +156,9 @@ function globeOverlay() {
 // λ (longitude) and φ (latitude) of projection center, rotation angle (γ) counter-clockwise in degrees
     presets = []; // λA, φA, γA, λB, φB, γB
     presets[0] = [0, 0, 0, 0, 0, 0];
-    presets[1] = [0, -10 , 0, -50, -13, 44]; // African and South American Coastlines
+    presets[1] = [0, -10 , 0, -50, -13, 44];// African and South American Coastlines
     presets[2] = [15, 10, 0, -100, 10, 0];  // Europe - America
-    presets[3] = [0, 90, 0, 120, -90, 0];    // Overlayed poles
+    presets[3] = [0, 90, 0, 120, -90, 0];   // Overlaid poles
     function loadPreset(p) {
         λA = presets[p][0];
         φA = presets[p][1];
@@ -182,7 +184,7 @@ function globeOverlay() {
         if (r >= zoomMin && r <= zoomMax) {
             r = r + delta * (r / 10);
             if (r >= diagonal / 2) {
-                clipAngle = 90 - Math.acos((diagonal / 2) / r) * 180 / Math.PI;
+                clipAngle = 90 - Math.acos((diagonal / 2) / r) * toDeg;
             }
             else {
                 clipAngle = 89
@@ -233,40 +235,42 @@ function globeOverlay() {
         event.returnValue = false;
     }
 
+    function calcTan() {
+        var γ, dX, dY;
+        dX = x - posX;
+        dY = y - posY;
+        if (dX > dY && -dX > dY) { γ = Math.tan(dX / dY) * toDeg/2;}
+        if (dX > dY && -dX < dY) { γ = -90 + Math.tan(dY / -dX) * toDeg/2;}
+        if (dX < dY && -dX > dY) { γ = 90 + Math.tan(-dY / dX) * toDeg/2;}
+        if (dX < dY && -dX < dY) { γ = 180+ Math.tan(-dX / -dY) * toDeg/2;}
+        return γ
+    }
+
     function rotate() {
-        mouseFactor = r;
         if (shiftFlag === 1) {
             if (altFlag === 0) {
-                λA = λA - xRel / mouseFactor;
-                φA = φA + yRel / mouseFactor;
-                λB = λB - xRel / mouseFactor;
-                φB = φB + yRel / mouseFactor;
+                λA = λA - xRel / r;
+                φA = φA + yRel / r;
+                λB = λB - xRel / r;
+                φB = φB + yRel / r;
             }
-            if (altFlag === 1) {
-                γA = γA - xRel / mouseFactor;
-                γB = γB - xRel / mouseFactor;
-            }
+            if (altFlag === 1) {γA = calcTan(); γB = calcTan();}
         }
         if (shiftFlag === 0) {
             if (shiftToggle === 0) {
                 if (altFlag === 0) {
-                    λA = λA - xRel / mouseFactor;
-                    φA = φA + yRel / mouseFactor;
+                    λA = λA - xRel / r;
+                    φA = φA + yRel / r;
                 }
-                if (altFlag === 1) {
-                    γA = γA - xRel / mouseFactor;
-                }
+                if (altFlag === 1) {γA = calcTan();}
             }
             if (shiftToggle === 1) {
                 if (altFlag === 0) {
-                    λB = λB - xRel / mouseFactor;
-                    φB = φB + yRel / mouseFactor;
+                    λB = λB - xRel / r;
+                    φB = φB + yRel / r;
                 }
-                if (altFlag === 1) {
-                    γB = γB - xRel / mouseFactor;
-                }
+                if (altFlag === 1) {γB = calcTan();}
             }
-
         }
     }
 
@@ -361,7 +365,7 @@ function globeOverlay() {
     function keyUp(evt) {
         evt = evt || window.event;
         if (evt.keyCode == 16) {shiftFlag = 0;}                             // Shift
-        if (evt.keyCode === 18) {altFlag = 0;}                              // Alt
+        if (evt.keyCode === 18) {altFlag = 0; xRel = 0; yRel = 0;}          // Alt
     }
 
     function drawglobe(λ, φ, γ, fillColor) {
