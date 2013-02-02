@@ -27,6 +27,7 @@
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 
+document.domain = "github.com";
 
 function globeOverlay() {
     var element, globe, land, coastlines, borders, lakes,
