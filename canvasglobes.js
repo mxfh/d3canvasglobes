@@ -331,66 +331,37 @@ function globeOverlay() {
 
     function keyDown(evt) {
         evt = evt || window.event;
-        if (evt.keyCode === 16) {                                            // Shift
+        if (evt.keyCode === 16) {                                           // Shift
             shiftFlag = 1;
             shiftToggle = toggle(shiftToggle);
         }
-        if (evt.keyCode === 18) {
-            altFlag = 1;
-        }                               // Alt
-        if (evt.keyCode === 82 || evt.keyCode === 48) {                      // 0/R
+        if (evt.keyCode === 18) {altFlag = 1;}                              // Alt
+        if (evt.keyCode === 82 || evt.keyCode === 48) {                     // 0/R
             xRel = 0;
             yRel = 0;
-            //momentum = 0;
             clearCanvas();
             loadPreset(0);
             r = rInit;
             initGradient();
         }
-        if (evt.keyCode === 49) {
-            loadPreset(1);
-        }                             // 1
-        if (evt.keyCode === 50) {
-            loadPreset(2);
-        }                             // 2
-        if (evt.keyCode === 51) {
-            loadPreset(3);
-        }                             // 3
-        if (evt.keyCode === 71) {
-            toggleGradient = toggle(toggleGradient);
-        }   // G
-        if (evt.keyCode === 66) {
-            showBorders = toggle(showBorders);
-        }        // B
-        if (evt.keyCode === 67) {
-            showCoastlines = toggle(showCoastlines);
-        }  // C
-        if (evt.keyCode === 32) {
-            showGlobeB = toggle(showGlobeB);
-        }          // Space
-        if (evt.keyCode === 83) {
-            switchColors = toggle(switchColors);
-        }      // S
-        if (evt.keyCode === 72) {
-            showHelp = toggle(showHelp);
-        }              // H
-        if (evt.keyCode === 76) {
-            showLakes = toggle(showLakes);
-        }              // L
-        if (evt.keyCode === 77) {
-            momentum = toggle(momentum);
-        }              // M
+        if (evt.keyCode === 49) {loadPreset(1);}                            // 1
+        if (evt.keyCode === 50) {loadPreset(2);}                            // 2
+        if (evt.keyCode === 51) {loadPreset(3);}                            // 3
+        if (evt.keyCode === 71) {toggleGradient = toggle(toggleGradient);}  // G
+        if (evt.keyCode === 66) {showBorders = toggle(showBorders);}        // B
+        if (evt.keyCode === 67) {showCoastlines = toggle(showCoastlines);}  // C
+        if (evt.keyCode === 32) {showGlobeB = toggle(showGlobeB);}          // Space
+        if (evt.keyCode === 83) {switchColors = toggle(switchColors);}      // S
+        if (evt.keyCode === 72) {showHelp = toggle(showHelp);}              // H
+        if (evt.keyCode === 76) {showLakes = toggle(showLakes);}            // L
+        if (evt.keyCode === 77) {momentum = toggle(momentum);}              // M
         drawglobes(λA, φA, γA, λB, φB, γB);
     }
 
     function keyUp(evt) {
         evt = evt || window.event;
-        if (evt.keyCode == 16) {
-            shiftFlag = 0;
-        }                             // Shift
-        if (evt.keyCode === 18) {
-            altFlag = 0;
-        }                              // Alt
+        if (evt.keyCode == 16) {shiftFlag = 0;}                             // Shift
+        if (evt.keyCode === 18) {altFlag = 0;}                              // Alt
     }
 
     function drawglobe(λ, φ, γ, fillColor) {
@@ -497,21 +468,22 @@ function globeOverlay() {
             context.fillText(Math.round(γB), getXalignRight(2), getYtext(2));
         }
         context.textAlign = "left";
-
-
     }
 
     function renderHelp() {
         context.textAlign = "right";
         context.fillStyle = textColor;
         context.fillText("Drag Mouse to move λ (longitude) and φ (latitude) of projection center", width - canvasPadding, getYtext(0));
-        context.fillText("Hold [Shift] to switch globe, hold [Alt] for rotation γ around center", width - canvasPadding, getYtext(1));
-        context.fillText("For presets press [1] - [3], [R] or [0] resets both globes to origin", width - canvasPadding, getYtext(2));
-        context.fillText("[B] toggles land borders and [C] coastlines", width - canvasPadding, getYtext(3));
-        context.fillText("[Space Bar] toggles secondary globe", width - canvasPadding, getYtext(4));
-        context.fillText("[S] switches colors [G] toggles Gradient", width - canvasPadding, getYtext(5));
-        context.fillText("Zoom with mouse wheel", width - canvasPadding, getYtext(6));
-        context.fillText("[H] shows/hides this help text", width - canvasPadding, getYtext(7));
+        context.fillText("Press [Shift] to switch globe, hold [Shift] to move both at once", width - canvasPadding, getYtext(1));
+        context.fillText("Hold [Alt] for rotation γ around center", width - canvasPadding, getYtext(2));
+        context.fillText("For presets press [1] - [3], [R] or [0] resets both globes to origin", width - canvasPadding, getYtext(3));
+        context.fillText("[B] toggles land borders and [C] coastlines", width - canvasPadding, getYtext(4));
+        context.fillText("[L] toggles lakes", width - canvasPadding, getYtext(5));
+        context.fillText("[Space Bar] toggles secondary globe", width - canvasPadding, getYtext(6));
+        context.fillText("[S] switches colors [G] toggles Gradient", width - canvasPadding, getYtext(7));
+        context.fillText("[M] disables momentum", width - canvasPadding, getYtext(8));
+        context.fillText("Zoom with mouse wheel", width - canvasPadding, getYtext(9));
+        context.fillText("[H] shows/hides this help text", width - canvasPadding, getYtext(11));
         context.textAlign = "left";
     }
 
