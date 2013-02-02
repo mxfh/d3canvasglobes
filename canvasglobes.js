@@ -3,6 +3,8 @@
 // github/twitter: @mxfh
 // comments are welcome my javascript skills are in dire need of some serious improvement
 //
+// live at: http://mxfh.github.com/d3canvasglobes/
+//
 // uses d3.js and topojson
 // http://bl.ocks.org/4188334
 // basic framework based on simple globe canvas by ejfox
@@ -26,8 +28,6 @@
 // TODO: Animations > Plate tectonics
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
-
-document.domain = "github.com";
 
 function globeOverlay() {
     var element, globe, land, coastlines, borders, lakes,
