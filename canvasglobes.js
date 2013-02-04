@@ -35,13 +35,14 @@ function globeOverlay() {
 		fillColorA, fillColorB, textColor, gradient,
 		width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
 		canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset,
-		geometryAtLOD, scale, topojsonPath, geometryAtStart, graticuleGeoJson, clipAngle, presets,
+		geometryAtLOD, scale, topojsonPath, geometryAtStart, clipAngle, presets,
 		λA, φA, γA, λB, φB, γB, γAtmp, γBtmp, γStart, rotation, projection, canvas, context, path,
 		posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, π, radToDegFactor,
 		momentumFlag, mouseDown, shiftKeyDown, shiftToggle, altKeyDown,
 		showGradient, showGraticule, switchColors, showGlobeB, showBorders, showLakes, showHelp, showPosition, showCoastlines,
 		debug;
     // debug flag
+	//noinspection JSUnusedAssignment
 	debug = 1;
 	π = Math.PI;
 	radToDegFactor = 180 / π;
@@ -92,7 +93,7 @@ function globeOverlay() {
 	rowHeight = 12;
 	padding = 3;
 	gutter = 15;
-	lineNumber = 0
+	lineNumber = 0;
 	origin = [canvasPadding, canvasPadding];
 	baselineOffset = 9;
 	//  ColorBrewer: RdYlBu
@@ -255,10 +256,12 @@ function globeOverlay() {
 		var γ, Δx, Δy;
 		Δx = x - posX;
 		Δy = y - posY;
-		return γ = radToDeg(-Math.atan2(Δy, Δx));
+		γ = radToDeg(-Math.atan2(Δy, Δx));
+		return γ;
 	}
 	function rotate() {
-		function calcRotation(λ, φ) {λA = λA - xRel / r;}
+		// TODO: refactor
+		// function calcRotation(λ, φ) {λA = λA - xRel / r;}
 		if (shiftKeyDown === 0) {
 			if (shiftToggle === 0) {
 				if (altKeyDown === 0) {
