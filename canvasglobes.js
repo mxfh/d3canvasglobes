@@ -138,7 +138,6 @@ function globeOverlay() {
 		presets[1] = [0, -10 , 0, -50, -13, 44];// African and South American Coastlines
 		presets[2] = [15, 10, 0, -100, 10, 0];  // Europe - America
 		presets[3] = [0, 90, 0, 120, -90, 0];   // Overlaid poles
-		if (λA === undefined) {loadPreset(1);} // initial preset
 		diagonal = Math.sqrt(maxDim * maxDim + minDim * minDim);
 		yRel = 0;
 		xRel = 0;
@@ -506,7 +505,7 @@ function globeOverlay() {
 			graticuleGeoJson.features.push({
 				"type": "Feature",
 				"properties": {
-					"name": "max"
+					"name": "Line of Latitude" + i
 				},
 				"geometry": {
 					"type": "LineString",
@@ -537,5 +536,6 @@ function globeOverlay() {
 	prepareDocument();
 	initializeAll();
 	loadGeometry();
+    loadPreset(1);
 	drawAll();
 }
