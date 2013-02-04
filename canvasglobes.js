@@ -26,6 +26,7 @@
 // TODO: Graticule
 // TODO: Switch projections
 // TODO: Raster
+// TODO: canvas resize on window resize
 // TODO: Animations > Plate tectonics
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
@@ -65,7 +66,7 @@ function globeOverlay() {
 	}
 	function initializeAll() {
 	width = window.innerWidth;
-	height = window.innerHeight;
+	height = window.innerHeight - 5; // needs fix -5 should not be necessary for no scroll bars
 	canvas = document.getElementById('canvas1');
 	minSize = 640;
 	if (width <= minSize) {width = minSize;}
