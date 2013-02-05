@@ -17,6 +17,7 @@
 // http://www.naturalearthdata.com/
 //
 // TODO: Improve speed
+// TODO: dynamic canvas size and position by content extent
 // TODO: add cities+labels
 // TODO: add mirror option
 // TODO: Jump to Country
@@ -318,10 +319,10 @@ function drawHelp() {
 		contextHelp.fillText("Show/hide secondary globe:  [Space Bar]", xRight, getYtext(newLine(2)));
 		contextHelp.fillText("Show/hide Graticule:  [G]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Show/hide land Borders:  [B]", xRight, getYtext(newLine()));
-		contextHelp.fillText("Show/hide Coastlines:  [C]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Show/hide Coastlines only (more performant):  [C]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Show/hide Lakes:  [L]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Switch globe colors:  [S]", xRight, getYtext(newLine()));
-		contextHelp.fillText("Draw style:  [D]", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("Draw shadow decoration:  [D]", xRight, getYtext(newLine(2)));
 		contextHelp.fillText("Show/hide position Info:  [I]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Reset all:  [R]", xRight, getYtext(newLine(2)));
 		contextHelp.fillText("Show/hide Help:  [H]", xRight, getYtext(newLine()));
@@ -335,25 +336,28 @@ function drawGlobe(rArray, fillColor, localContext) {
 	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
 	path = d3.geo.path().projection(projection).context(localContext);
 	localContext.beginPath();
-	localContext.fillStyle = fillColor;
-	path(land);
-	localContext.fill();
+	if (!showCoastlines) {
+		localContext.fillStyle = fillColor;
+		path(land);
+		localContext.fill();
+	} else {
+		localContext.beginPath();
+		path(coastlines);
+		//localContext.strokeStyle = "rgba(0, 0, 0, 0.3)";
+		localContext.strokeStyle = fillColor;
+		localContext.stroke();
+	}
 	if (showLakes) {
 		localContext.beginPath();
 		localContext.fillStyle = "rgba(255, 255, 255, 0.75)";
 		path(lakes);
 		localContext.fill();
 	}
-	if (showCoastlines) {
-		localContext.beginPath();
-		path(coastlines);
-		localContext.strokeStyle = "rgba(0, 0, 0, 0.3)";
-		localContext.stroke();
-	}
 	if (showBorders) {
 		localContext.beginPath();
 		path(borders);
-		localContext.strokeStyle = "rgba(255, 255, 255, 0.5)";
+		if (showCoastlines) {localContext.strokeStyle = fillColor; }
+		if (!showCoastlines) {localContext.strokeStyle = "rgba(255, 255, 255, 0.5)"; }
 		localContext.stroke();
 	}
 	if (showGraticule) {
