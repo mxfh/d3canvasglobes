@@ -301,8 +301,8 @@ function zoom(delta) {
 		if (r >= diagonal / 2) {clipAngle = 90 - radToDeg(Math.acos((diagonal / 2) / r)); }
 		else {clipAngle = 89}
 		if (r <= diagonal) {setGeometryLOD(0, 0, 1); }
-		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 0); }
-		if (r > diagonal * 4 && geometryLOD !== 2) {setGeometryLOD(2, 1, 0); }
+		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 1); }
+		if (r > diagonal * 4 && geometryLOD !== 2) {setGeometryLOD(2, 1, 1); }
 		if (r < zoomMin) {r = zoomMin; }
 		if (r > zoomMax) {r = zoomMax; }
 		// clear gradient overlay on zoom resize
