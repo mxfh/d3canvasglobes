@@ -47,6 +47,8 @@ var element, globe, land, coastlines, borders, lakes, graticule,
 	debugFlag;
 
 debugFlag = 0;
+function logAll() {console.log(geometryAtLOD[0], globe, land, coastlines, borders, lakes, graticule, "tmp:", gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path, canvas, context); }
+
 
 topojsonPath = "topojson/";
 geometryAtLOD = [];
@@ -56,20 +58,6 @@ geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
 geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
 geometryLOD = 0;
 
-function loadGeometry(topojsonData) {
-	if (topojsonData === undefined) {topojsonData = geometryAtLOD[0]; }
-	d3.json(topojsonData, function (error, json) {
-		if (error) console.log(error);
-		globe = {type: "Sphere"};
-		land = topojson.object(json, json.objects.land);
-		coastlines = topojson.object(json, json.objects.coastline);
-		borders = topojson.object(json, json.objects.landborders);
-		lakes = topojson.object(json, json.objects.lakes);
-		graticule = createGraticule();
-		drawAll();
-	});
-}
-loadGeometry();
 function createGraticule() { // create graticules as GeoJSON on the fly
 	var lonLat, i, j, graticuleGeoJson = {type: "FeatureCollection", "features": []}; //declare array
 	for (i = 0; i < 5; i = i + 1) {
@@ -90,7 +78,29 @@ function createGraticule() { // create graticules as GeoJSON on the fly
 	}
 	return graticuleGeoJson;
 }
-
+function getContextByCanvasInArray(canvasInArray) {
+	var localContext;
+	if (canvasInArray.getContext) {
+		canvasInArray.width = width;
+		canvasInArray.height = height;
+		localContext = canvasInArray.getContext('2d');
+	}
+	return localContext;
+}
+function createGradientSphere() {
+	gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
+	gradientSphere.addColorStop(0, "rgba(127, 127, 127, 0)");
+	gradientSphere.addColorStop(0.1, "rgba(127, 127, 127, 0.01)");
+	gradientSphere.addColorStop(0.3, "rgba(127, 127, 127, 0.02)");
+	gradientSphere.addColorStop(0.5, "rgba(127, 127, 127, 0.05)");
+	gradientSphere.addColorStop(0.65, "rgba(127, 127, 127, 0.09)");
+	gradientSphere.addColorStop(0.75, "rgba(127, 127, 127, 0.14)");
+	gradientSphere.addColorStop(0.825, "rgba(127, 127, 127, 0.2)");
+	gradientSphere.addColorStop(0.9, "rgba(127, 127, 127, 0.29)");
+	gradientSphere.addColorStop(0.95, "rgba(127, 127, 127, 0.42)");
+	gradientSphere.addColorStop(0.98, "rgba(127, 127, 127, 0.55)");
+	gradientSphere.addColorStop(1, "rgba(127, 127, 127, 0.62)");
+}
 function initializeAll() {
 	width = window.innerWidth;
 	height = window.innerHeight - 5; // needs fix -5 should not be necessary for no scroll bars
@@ -178,12 +188,18 @@ function initializeAll() {
 	zoomMin = 10;
 	zoomMax = 10000;
 	delta = 0;
-	// ? (longitude) and ? (latitude) of projection center, rotation angle (?) counter-clockwise in degrees
-	presets = []; // [[?A, ?A, ?A], [?B, ?B, ?B]]
+	// λ (longitude) and φ (latitude) of projection center, (γ) rotation angle counter-clockwise in degrees
+	presets = []; // [[λ, φ, γ], [ λ, φ, γ]]
 	presets[0] = [[0, 0, 0], [0, 0, 0]];
 	presets[1] = [[0, -10, 0], [-50, -13, 44]]; // African and South American Coastlines
-	presets[2] = [[15, 10, 0], [-100, 10, 0]];  // Europe - America
+	presets[2] = [[15, 40, 0], [-100, 40, 0]];  // Europe - America
 	presets[3] = [[0, 90, 0], [120, -90, 0]];   // Overlaid poles
+	presets[4] = [[15, 40, 0], [-45, -140, 0]];   // Europe - Australia
+	presets[5] = [[-100, 40, 0], [-45, -140, 0]];   // America - Australia
+	presets[6] = [[-100, 40, 0], [100, 40, 0]];   // USA - China
+	presets[7] = [[-100, 40, 0], [60, 40, 0]];   // USA - Russia
+	presets[8] = [[15, 40, 0], [100, 40, 0]];   // Europe - China
+	presets[9] = [[130, -35, 0], [135, -67, 0]];// Australia - Antarctica tectonics
 	diagonal = Math.sqrt(maxDim * maxDim + minDim * minDim);
 	yRel = 0;
 	xRel = 0;
@@ -196,29 +212,6 @@ function initializeAll() {
 function sign(number) {return number ? number < 0 ? -1 : 1 : 0; }  // sign function (+/-/0) of number http://stackoverflow.com/questions/7624920/number-sign-in-javascript
 function radToDeg(rad) {return rad * radToDegFactor; }
 //initialize Gradient
-function createGradientSphere() {
-	gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
-	gradientSphere.addColorStop(0, "rgba(127, 127, 127, 0)");
-	gradientSphere.addColorStop(0.1, "rgba(127, 127, 127, 0.01)");
-	gradientSphere.addColorStop(0.3, "rgba(127, 127, 127, 0.02)");
-	gradientSphere.addColorStop(0.5, "rgba(127, 127, 127, 0.05)");
-	gradientSphere.addColorStop(0.65, "rgba(127, 127, 127, 0.09)");
-	gradientSphere.addColorStop(0.75, "rgba(127, 127, 127, 0.14)");
-	gradientSphere.addColorStop(0.825, "rgba(127, 127, 127, 0.2)");
-	gradientSphere.addColorStop(0.9, "rgba(127, 127, 127, 0.29)");
-	gradientSphere.addColorStop(0.95, "rgba(127, 127, 127, 0.42)");
-	gradientSphere.addColorStop(0.98, "rgba(127, 127, 127, 0.55)");
-	gradientSphere.addColorStop(1, "rgba(127, 127, 127, 0.62)");
-}
-function getContextByCanvasInArray(canvasInArray) {
-	var localContext;
-	if (canvasInArray.getContext) {
-		canvasInArray.width = width;
-		canvasInArray.height = height;
-		localContext = canvasInArray.getContext('2d');
-	}
-	return localContext;
-}
 function loadPreset(p) {rArrays = presets[p].slice(); }
 function calcTan() { // Calculate Angle from projection center
 	var gamma, deltaX, deltaY;
@@ -247,19 +240,6 @@ function prepareDocument() {
 	d3.selectAll("div").append("canvas")
 		.attr("id", "canvas_info")
 		.attr("style", "position: absolute; left: 0; top: 0; z-index: 6;");
-
-
-	element = document.getElementById("map");
-	element.addEventListener("mousemove", track, false);
-	element.addEventListener("mousedown", startTrack, false);
-	element.addEventListener("mouseup", stopTrack, false);
-	document.addEventListener("mousewheel", wheel, false);
-	document.addEventListener("keydown", keyDown, false);
-	document.addEventListener("keyup", keyUp, false);
-	window.onblur = function () { // reset key states on lost focus
-		shiftKeyDown = 0;
-		altKeyDown = 0;
-	};
 }
 // Layout helper Functions
 function clearCanvasByContextIndex(layer) {context[layer].clearRect(0, 0, canvas[layer].width, canvas[layer].height); }
@@ -288,71 +268,173 @@ function clearBackgroundRect(col, row, cols, rows, localContext) {
 	var paddingPlus = padding + 1;
 	localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus, cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
 }
+
+Number.prototype.mod = function (n) {return ((this % n) + n) % n; };
+function drawInfo() {
+	if (showInfo) {
+		var lambdaA = (rArrays[0][0] + 180).mod(360) - 180,
+			phiA = (rArrays[0][1] + 180).mod(360) - 180,
+			gammaA = rArrays[0][2].mod(360),
+			lambdaB =  (rArrays[1][0] + 180).mod(360) - 180,
+			phiB = (rArrays[1][1] + 180).mod(360) - 180,
+			gammaB = rArrays[1][2].mod(360);
+		clearBackgroundRect(0, 0, 3, 3, contextInfo);
+		backgroundRect(1, 0, 1, 3, fillColorA, contextInfo);
+		backgroundRect(2, 0, 1, 3, fillColorB, contextInfo);
+		contextInfo.fillStyle = "rgba(0, 0, 0, 0.7)";
+		if (x !== undefined) {contextInfo.fillText("x :", getX(0), getYtext(0)); }
+		if (y !== undefined) {contextInfo.fillText("y :", getX(0), getYtext(1)); }
+		contextInfo.fillText("φ :", getX(1), getYtext(0));
+		contextInfo.fillText("φ :", getX(2), getYtext(0));
+		contextInfo.fillText("λ :", getX(1), getYtext(1));
+		contextInfo.fillText("λ :", getX(2), getYtext(1));
+		if (gammaA !== 0) {contextInfo.fillText("γ :", getX(1), getYtext(2)); }
+		if (gammaB !== 0) {contextInfo.fillText("γ :", getX(2), getYtext(2)); }
+		contextInfo.textAlign = "right";
+		if (x !== undefined) {contextInfo.fillText(x, getXalignRight(0), getYtext(0)); }
+		if (y !== undefined) {contextInfo.fillText(y, getXalignRight(0), getYtext(1)); }
+		contextInfo.fillText(Math.round(phiA), getXalignRight(1), getYtext(0));
+		contextInfo.fillText(Math.round(phiB), getXalignRight(2), getYtext(0));
+		contextInfo.fillText(Math.round(lambdaA), getXalignRight(1), getYtext(1));
+		contextInfo.fillText(Math.round(lambdaB), getXalignRight(2), getYtext(1));
+		if (gammaA !== 0) {contextInfo.fillText(Math.round(gammaA), getXalignRight(1), getYtext(2)); }
+		if (gammaB !== 0) {contextInfo.fillText(Math.round(gammaB), getXalignRight(2), getYtext(2)); }
+		contextInfo.textAlign = "left";
+	}
+}
+function drawHelp() {
+	if (showHelp) {
+		var xRight = width - canvasPadding;
+		lineNumber = 0;
+		contextHelp.textAlign = "right";
+		contextHelp.fillStyle = textColor;
+		contextHelp.fillText("Drag Mouse to move λ (longitude/lambda) and φ (latitude/phi) of projection center", xRight, getYtext(newLine()));
+		contextHelp.fillText("Zoom with mouse wheel", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("To switch globe or move both at once:  Press/Hold [Shift]", xRight, getYtext(newLine()));
+		contextHelp.fillText("For rotation γ (gamma) around center: Drag Mouse and  Hold [Alt]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Disable Momentum:  [M]", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("For presets press:  [1] - [9]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Reset both globes to origin:  [0]", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("Show/hide secondary globe:  [Space Bar]", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("Show/hide Graticule:  [G]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Show/hide land Borders:  [B]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Show/hide Coastlines:  [C]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Show/hide Lakes:  [L]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Switch globe colors:  [S]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Draw style:  [D]", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("Show/hide position Info:  [I]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Reset all:  [R]", xRight, getYtext(newLine(2)));
+		contextHelp.fillText("Show/hide Help:  [H]", xRight, getYtext(newLine()));
+		contextHelp.textAlign = "left";
+	}
+}
+function drawGlobe(rArray, fillColor, localContext) {
+	// -λ, -φ, γ
+	var localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
+	// tweak projections here
+	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
+	path = d3.geo.path().projection(projection).context(localContext);
+	localContext.beginPath();
+	localContext.fillStyle = fillColor;
+	path(land);
+	localContext.fill();
+	if (showLakes) {
+		localContext.beginPath();
+		localContext.fillStyle = "rgba(255, 255, 255, 0.75)";
+		path(lakes);
+		localContext.fill();
+	}
+	if (showCoastlines) {
+		localContext.beginPath();
+		path(coastlines);
+		localContext.strokeStyle = "rgba(0, 0, 0, 0.3)";
+		localContext.stroke();
+	}
+	if (showBorders) {
+		localContext.beginPath();
+		path(borders);
+		localContext.strokeStyle = "rgba(255, 255, 255, 0.5)";
+		localContext.stroke();
+	}
+	if (showGraticule) {
+		localContext.beginPath();
+		path(graticule);
+		localContext.strokeStyle = fillColor;
+		localContext.stroke();
+	}
+}
+function drawGlobes() {
+	if (switchColors) {
+		var tmp = fillColorA;
+		fillColorA = fillColorB;
+		fillColorB = tmp;
+		switchColors = 0;
+	}
+	if (showGlobes[0] && (selectedGlobes[0] || updateGlobes[1])) {
+		clearCanvas(canvasGlobeA);
+		drawGlobe(rArrays[0], fillColorA, contextGlobeA);
+	}
+	if (showGlobes[1] && (selectedGlobes[1] || updateGlobes[1])) {
+		clearCanvas(canvasGlobeB);
+		drawGlobe(rArrays[1], fillColorB, contextGlobeB);
+	}
+	updateGlobes = [0, 0];
+}
+function drawGradient() {
+	clearCanvas(canvasGradient);
+	projection = d3.geo.orthographic().scale(r).translate([posX, posY]).clipAngle(clipAngle);
+	path = d3.geo.path().projection(projection).context(contextGradient);
+	if (showGradient && showGradientZoombased) {
+		contextGradient.beginPath();
+		contextGradient.fillStyle = gradientSphere;
+		path(globe);
+		contextGradient.fill();
+	}
+	if (!showGradient || !showGradientZoombased) {
+		contextGradient.beginPath();
+		path(globe);
+		contextGradient.strokeStyle = "rgba(0, 0, 0, 0.2)";
+		contextGradient.stroke();
+	}
+}
+function drawAll() {
+	updateGlobes = [1, 1];
+	clearAllCanvas();
+	drawGlobes();
+	drawGradient();
+	drawInfo();
+	drawHelp();
+}
 // interaction function
-function zoom(delta) {
-	function setGeometryLOD(geometryLOD, forceNoGradientAtLOD, enableMomentumAtLOD) {
-		if (forceNoGradientAtLOD === 1) {showGradientZoombased = 0; }
-		else {showGradientZoombased = 1; }
-		momentumFlag = enableMomentumAtLOD;
-		loadGeometry(geometryAtLOD[geometryLOD]);
-	}
-	if (r >= zoomMin && r <= zoomMax) {
-		r = r + delta * (r / 10);
-		if (r >= diagonal / 2) {clipAngle = 90 - radToDeg(Math.acos((diagonal / 2) / r)); }
-		else {clipAngle = 89}
-		if (r <= diagonal) {setGeometryLOD(0, 0, 1); }
-		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 1); }
-		if (r > diagonal * 4 && geometryLOD !== 2) {setGeometryLOD(2, 1, 1); }
-		if (r < zoomMin) {r = zoomMin; }
-		if (r > zoomMax) {r = zoomMax; }
-		// clear gradient overlay on zoom resize
-		createGradientSphere();
-		drawGlobes();
-		drawGradient();
-	}
-}
-function wheel(event) {
-	if (!event) /* For IE. */
-		event = window.event;
-	if (event.wheelDelta) {
-		delta = event.wheelDelta / 120;
-	} else if (event.detail) {
-		delta = -event.detail / 3;
-	}
-	if (delta)
-		zoom(delta);
-	if (event.preventDefault)
-		event.preventDefault();
-	event.returnValue = false;
-}
 function rotate() {
-	if (shiftKeyDown === 0) {
-		if (shiftToggle === 0) {
+	if (!shiftKeyDown) {
+		if (!shiftToggle) {
 			updateGlobes[0] = 1;
-			selectedGlobes = [1,0];
-			if (altKeyDown === 0) {rArrays[0] = [rArrays[0][0] - xRel / r, rArrays[0][1] + yRel / r, rArrays[0][2]]; }
-			if (altKeyDown === 1) {rArrays[0] = [rArrays[0][0],rArrays[0][1],gammaAtmp + calcTan() - gammaStart];}}
-		if (shiftToggle === 1) {
+			selectedGlobes = [1, 0];
+			if (!altKeyDown) {rArrays[0] = [rArrays[0][0] - xRel / r, rArrays[0][1] + yRel / r, rArrays[0][2]]; }
+			if (altKeyDown) {rArrays[0] = [rArrays[0][0], rArrays[0][1], gammaAtmp + calcTan() - gammaStart]; }
+		}
+		if (shiftToggle) {
 			updateGlobes[1] = 1;
-			selectedGlobes = [0,1];
-			if (altKeyDown === 0) {rArrays[1] = [rArrays[1][0] - xRel / r, rArrays[1][1] + yRel / r, rArrays[1][2]]; }
-			if (altKeyDown === 1) {rArrays[1] = [rArrays[1][0],rArrays[1][1],gammaBtmp + calcTan() - gammaStart];}
+			selectedGlobes = [0, 1];
+			if (!altKeyDown) {rArrays[1] = [rArrays[1][0] - xRel / r, rArrays[1][1] + yRel / r, rArrays[1][2]]; }
+			if (altKeyDown) {rArrays[1] = [rArrays[1][0], rArrays[1][1], gammaBtmp + calcTan() - gammaStart]; }
 		}
 	}
-	if (shiftKeyDown === 1) {
-		updateGlobes = [1,1];
-		selectedGlobes = [1,1];
-		if (altKeyDown === 0) {
+	if (shiftKeyDown) {
+		updateGlobes = [1, 1];
+		selectedGlobes = [1, 1];
+		if (!altKeyDown) {
 			rArrays = [
 				[rArrays[0][0] - xRel / r, rArrays[0][1] + yRel / r, rArrays[0][2]],
 				[rArrays[1][0] - xRel / r, rArrays[1][1] + yRel / r, rArrays[1][2]]
 			];
 		}
-		if (altKeyDown === 1) {
+		if (altKeyDown) {
 			var diff = calcTan() - gammaStart;
 			rArrays = [
-				[rArrays[0][0],rArrays[0][1],gammaAtmp + diff],
-				[rArrays[1][0],rArrays[1][1],gammaBtmp + diff]
+				[rArrays[0][0], rArrays[0][1], gammaAtmp + diff],
+				[rArrays[1][0], rArrays[1][1], gammaBtmp + diff]
 			];
 		}
 	}
@@ -360,7 +442,7 @@ function rotate() {
 function track(evt) {
 	x = evt.offsetX || evt.layerX;
 	y = evt.offsetY || evt.layerY;
-	if (mouseDown === 1) {
+	if (mouseDown) {
 		xRel = x - xTmp;
 		yRel = y - yTmp;
 		rotate();
@@ -375,58 +457,84 @@ function startTrack(evt) {
 }
 function stopTrack() {
 	mouseDown = 0;
-	if (momentumFlag === 1) {
+	if (momentumFlag) {
 		var refreshIntervalId = setInterval(function () {
-			var linearSlowdown = r / 500;
-			var factorSlowdown = 0.98;
+			var linearSlowdown = r / 500, factorSlowdown = 0.98;
 			yRel = (yRel) * factorSlowdown - sign(yRel) * linearSlowdown;
 			xRel = (xRel) * factorSlowdown - sign(xRel) * linearSlowdown;
 			rotate();
 			drawGlobes();
-			if (Math.abs(xRel) < 1 && Math.abs(yRel) < 1 || momentumFlag === 0) {
+			if ((Math.abs(xRel) < 1 && Math.abs(yRel) < 1) || !momentumFlag) {
 				clearInterval(refreshIntervalId);
 			}
 		}, 1000 / 48);
 	}
 }
 function toggle(p) {
-	if (p === 1) {p = 0;}
-	else {p = 1;}
+	if (p) {p = 0; }
+	else {p = 1; }
 	return p;
+}
+
+function loadGeometry(topojsonData) {
+	if (topojsonData === undefined) {topojsonData = geometryAtLOD[0]; }
+	d3.json(topojsonData, function (error, json) {
+		if (error) {console.log(error); }
+		globe = {type: "Sphere"};
+		land = topojson.object(json, json.objects.land);
+		coastlines = topojson.object(json, json.objects.coastline);
+		borders = topojson.object(json, json.objects.landborders);
+		lakes = topojson.object(json, json.objects.lakes);
+		graticule = createGraticule();
+		drawAll();
+	});
+}
+
+function resetAll() {
+	initializeAll();
+	loadGeometry(geometryAtLOD[0]);
+	clearAllCanvas();
+	if (debugFlag) {logAll(); }
 }
 function keyDown(evt) {
 	var validKey = 1;
 	evt = evt || window.event;
 	switch (evt.keyCode) {
-		case 16: shiftKeyDown = 1;  break;                                  // Shift
-		case 18:                                                            // Alt
-			altKeyDown = 1;
-			if (gammaAtmp === undefined || gammaBtmp === undefined || gammaStart === undefined) {
-				gammaAtmp = rArrays[0][2];
-				gammaBtmp = rArrays[1][2];
-				gammaStart = calcTan();
-			}
-			break;
-		case 32: showGlobes[1] = toggle(showGlobes[1]); drawAll(); break;   // Space
-		case 48: loadPreset(0); drawAll(); break;                           // 0
-		case 49: loadPreset(1); drawAll(); break;                           // 1
-		case 50: loadPreset(2); drawAll(); break;                           // 2
-		case 51: loadPreset(3); drawAll(); break;                           // 3
-		case 66: showBorders = toggle(showBorders);  drawAll() ;break;      // B
-		case 67: showCoastlines = toggle(showCoastlines); drawAll(); break; // C
-		case 68: showGradient = toggle(showGradient); drawAll(); break;     // D
-		case 71: showGraticule = toggle(showGraticule); drawAll() ;break;   // G
-		case 72: showHelp = toggle(showHelp); drawAll(); break;             // H
-		case 73: showInfo = toggle(showInfo); drawAll(); break;             // L
-		case 76: showLakes = toggle(showLakes); drawAll(); break;           // L
-		case 77: momentumFlag = toggle(momentumFlag); break;                // M
-		case 82: resetAll(); drawAll(); break;                              // R
-		case 83: switchColors = toggle(switchColors); drawAll(); break;     // S
-		case 192:                                                           // `
-		case 220: debugFlag = toggle(debugFlag); break;                     // ^
-		default: validKey = 0; break;
+	case 16: shiftKeyDown = 1; break;                                   // Shift
+	case 18:                                                            // Alt
+		altKeyDown = 1;
+		if (gammaAtmp === undefined || gammaBtmp === undefined || gammaStart === undefined) {
+			gammaAtmp = rArrays[0][2];
+			gammaBtmp = rArrays[1][2];
+			gammaStart = calcTan();
+		}
+		break;
+	case 32: showGlobes[1] = toggle(showGlobes[1]); drawAll(); break;   // Space
+	case 48: loadPreset(0); drawAll(); break;                           // 0
+	case 49: loadPreset(1); drawAll(); break;                           // 1
+	case 50: loadPreset(2); drawAll(); break;                           // 2
+	case 51: loadPreset(3); drawAll(); break;                           // 3
+	case 52: loadPreset(4); drawAll(); break;                           // 4
+	case 53: loadPreset(5); drawAll(); break;                           // 5
+	case 54: loadPreset(6); drawAll(); break;                           // 6
+	case 55: loadPreset(7); drawAll(); break;                           // 7
+	case 56: loadPreset(8); drawAll(); break;                           // 8
+	case 57: loadPreset(9); drawAll(); break;                           // 9
+	case 66: showBorders = toggle(showBorders);  drawAll(); break;      // B
+	case 67: showCoastlines = toggle(showCoastlines); drawAll(); break; // C
+	case 68: showGradient = toggle(showGradient); drawAll(); break;     // D
+	case 71: showGraticule = toggle(showGraticule); drawAll(); break;   // G
+	case 72: showHelp = toggle(showHelp); drawAll(); break;             // H
+	case 73: showInfo = toggle(showInfo); drawAll(); break;             // L
+	case 76: showLakes = toggle(showLakes); drawAll(); break;           // L
+	case 77: momentumFlag = toggle(momentumFlag); break;                // M
+	case 82: resetAll(); drawAll(); break;                              // R
+	case 83: switchColors = toggle(switchColors); drawAll(); break;     // S
+	case 192:                                                           // `
+	case 220: debugFlag = toggle(debugFlag); break;                     // ^
+	default: validKey = 0; break;
 	}
-	if (validKey === 1 && debugFlag === 1) {
+	if (validKey && debugFlag) {
 		console.log("valid key:", evt.keyCode);
 	}
 }
@@ -434,166 +542,64 @@ function keyUp(evt) {
 	var validKey = 1;
 	evt = evt || window.event;
 	switch (evt.keyCode) {
-		case 16:                                        // Shift
-			shiftKeyDown = 0;
-			shiftToggle = toggle(shiftToggle);
-			break;
-		case 18:                                        // Alt
-			altKeyDown = 0;
-			xRel = 0;
-			yRel = 0;
-			gammaAtmp = undefined;
-			gammaBtmp = undefined;
-			gammaStart = undefined;
-			break;
-		default: validKey = 0; break;
+	case 16:                                        // Shift
+		shiftKeyDown = 0;
+		shiftToggle = toggle(shiftToggle);
+		break;
+	case 18:                                        // Alt
+		altKeyDown = 0;
+		xRel = 0;
+		yRel = 0;
+		gammaAtmp = undefined;
+		gammaBtmp = undefined;
+		gammaStart = undefined;
+		break;
+	default: validKey = 0; break;
 	}
 }
-
-function drawInfo() {
-	if (showInfo === 1) {
-	var lambdaA = rArrays[0][0],
-		phiA = rArrays[0][1],
-		gammaA = rArrays[0][2],
-		lambdaB = rArrays[1][0],
-		phiB = rArrays[1][1],
-		gammaB = rArrays[1][2];
-	clearBackgroundRect(0, 0, 3, 3, contextInfo);
-	backgroundRect(1, 0, 1, 3, fillColorA, contextInfo);
-	backgroundRect(2, 0, 1, 3, fillColorB, contextInfo);
-	contextInfo.fillStyle = "rgba(0, 0, 0, 0.7)";
-	if (x !== undefined) {contextInfo.fillText("x :", getX(0), getYtext(0));}
-	if (y !== undefined) {contextInfo.fillText("y :", getX(0), getYtext(1));}
-	contextInfo.fillText("λ :", getX(1), getYtext(0));
-	contextInfo.fillText("λ :", getX(2), getYtext(0));
-	contextInfo.fillText("φ :", getX(1), getYtext(1));
-	contextInfo.fillText("φ :", getX(2), getYtext(1));
-	if (gammaA !== 0) {contextInfo.fillText("γ :", getX(1), getYtext(2));}
-	if (gammaB !== 0) {contextInfo.fillText("γ :", getX(2), getYtext(2));}
-	contextInfo.textAlign = "right";
-	if (x !== undefined) {contextInfo.fillText(x, getXalignRight(0), getYtext(0));}
-	if (y !== undefined) {contextInfo.fillText(y, getXalignRight(0), getYtext(1));}
-	contextInfo.fillText(Math.round(lambdaA), getXalignRight(1), getYtext(0));
-	contextInfo.fillText(Math.round(phiA), getXalignRight(2), getYtext(0));
-	contextInfo.fillText(Math.round(lambdaB), getXalignRight(1), getYtext(1));
-	contextInfo.fillText(Math.round(phiB), getXalignRight(2), getYtext(1));
-	if (gammaA !== 0) {contextInfo.fillText(Math.round(gammaA), getXalignRight(1), getYtext(2));}
-	if (gammaB !== 0) {contextInfo.fillText(Math.round(gammaB), getXalignRight(2), getYtext(2));}
-	contextInfo.textAlign = "left";
+function zoom(delta) {
+	function setGeometryLOD(geometryLOD, forceNoGradientAtLOD, enableMomentumAtLOD) {
+		if (forceNoGradientAtLOD) {showGradientZoombased = 0; }
+		else {showGradientZoombased = 1; }
+		momentumFlag = enableMomentumAtLOD;
+		loadGeometry(geometryAtLOD[geometryLOD]);
+	}
+	if (r >= zoomMin && r <= zoomMax) {
+		r = r + delta * (r / 10);
+		if (r >= diagonal / 2) {clipAngle = 90 - radToDeg(Math.acos((diagonal / 2) / r)); }
+		else {clipAngle = 89; }
+		if (r <= diagonal) {setGeometryLOD(0, 0, 1); }
+		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 1); }
+		if (r > diagonal * 4 && geometryLOD !== 2) {setGeometryLOD(2, 1, 1); }
+		if (r < zoomMin) {r = zoomMin; }
+		if (r > zoomMax) {r = zoomMax; }
+		// clear gradient overlay on zoom resize
+		createGradientSphere();
+		drawGlobes();
+		drawGradient();
 	}
 }
-function drawHelp() {
-	if (showHelp) {
-	lineNumber = 0;
-	var xRight = width - canvasPadding;
-	contextHelp.textAlign = "right";
-	contextHelp.fillStyle = textColor;
-	contextHelp.fillText("Drag Mouse to move λ (longitude/lambda) and φ (latitude/phi) of projection center", xRight, getYtext(newLine()));
-	contextHelp.fillText("Zoom with mouse wheel", xRight, getYtext(newLine(2)));
-	contextHelp.fillText("To switch globe or move both at once:  Press/Hold [Shift]", xRight, getYtext(newLine()));
-	contextHelp.fillText("For rotation γ (gamma) around center: Drag Mouse and  Hold [Alt]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Disable Momentum:  [M]", xRight, getYtext(newLine(2)));
-	contextHelp.fillText("For presets press:  [1] - [3]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Reset both globes to origin:  [0]", xRight, getYtext(newLine(2)));
-	contextHelp.fillText("Show/hide secondary globe:  [Space Bar]", xRight, getYtext(newLine(2)));
-	contextHelp.fillText("Show/hide Graticule:  [G]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Show/hide land Borders:  [B]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Show/hide Coastlines:  [C]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Show/hide Lakes:  [L]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Switch globe colors:  [S]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Draw style:  [D]", xRight, getYtext(newLine(2)));
-	contextHelp.fillText("Show/hide position Info:  [I]", xRight, getYtext(newLine()));
-	contextHelp.fillText("Reset all:  [R]", xRight, getYtext(newLine(2)));
-	contextHelp.fillText("Show/hide Help:  [H]", xRight, getYtext(newLine()));
-	contextHelp.textAlign = "left";
-	}
+function wheel(event) {
+	if (!event)	{event = window.event; } // IE
+	if (event.wheelDelta) { delta = event.wheelDelta / 120; }
+	else if (event.detail) {delta = -event.detail / 3; }
+	if (delta) {zoom(delta); }
+	if (event.preventDefault) {event.preventDefault(); event.returnValue = false; }
 }
-function drawGlobe(rArray, fillColor, localContext) {
-	// -?, -?, ?
-	var localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
-	// tweak projections here
-	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
-	path = d3.geo.path().projection(projection).context(localContext);
-	localContext.beginPath();
-	localContext.fillStyle = fillColor;
-	path(land);
-	localContext.fill();
-	if (showLakes === 1) {
-		localContext.beginPath();
-		localContext.fillStyle = "rgba(255, 255, 255, 0.75)";
-		path(lakes);
-		localContext.fill();
-	}
-	if (showCoastlines === 1) {
-		localContext.beginPath();
-		path(coastlines);
-		localContext.strokeStyle = "rgba(0, 0, 0, 0.3)";
-		localContext.stroke();
-	}
-	if (showBorders === 1) {
-		localContext.beginPath();
-		path(borders);
-		localContext.strokeStyle = "rgba(255, 255, 255, 0.5)";
-		localContext.stroke();
-	}
-	if (showGraticule === 1) {
-		localContext.beginPath();
-		path(graticule);
-		localContext.strokeStyle = fillColor;
-		localContext.stroke();
-	}
+function addListeners() {
+	function lostFocus() {shiftKeyDown = 0; altKeyDown = 0; }
+	element = document.getElementById("map");
+	element.addEventListener("mousemove", track, false);
+	element.addEventListener("mousedown", startTrack, false);
+	element.addEventListener("mouseup", stopTrack, false);
+	document.addEventListener("mousewheel", wheel, false);
+	document.addEventListener("keydown", keyDown, false);
+	document.addEventListener("keyup", keyUp, false);
+	window.onblur = lostFocus(); // reset key states on lost focus
 }
-function drawGlobes() {
-	if (switchColors === 1) {
-		var tmp = fillColorA;
-		fillColorA = fillColorB;
-		fillColorB = tmp;
-		switchColors = 0;
-	}
-	if (showGlobes[0] === 1 && (selectedGlobes[0] === 1 || updateGlobes[1] === 1)) {
-		clearCanvas(canvasGlobeA); drawGlobe(rArrays[0], fillColorA, contextGlobeA);
-	}
-	if (showGlobes[1] === 1 && (selectedGlobes[1] === 1 || updateGlobes[1] === 1)) {
-		clearCanvas(canvasGlobeB);	drawGlobe(rArrays[1], fillColorB, contextGlobeB);
-	}
-	updateGlobes = [0,0];
-}
-function drawGradient() {
-	clearCanvas(canvasGradient);
-	projection = d3.geo.orthographic().scale(r).translate([posX, posY]).clipAngle(clipAngle);
-	path = d3.geo.path().projection(projection).context(contextGradient);
-	if (showGradient === 1 && showGradientZoombased === 1) {
-		contextGradient.beginPath();
-		contextGradient.fillStyle = gradientSphere;
-		path(globe);
-		contextGradient.fill();
-	}
-	if (showGradient === 0 || showGradientZoombased === 0) {
-		contextGradient.beginPath();
-		path(globe);
-		contextGradient.strokeStyle = "rgba(0, 0, 0, 0.2)";
-		contextGradient.stroke();
-	}
-}
-function drawAll() {
-	updateGlobes = [1,1];
-	clearAllCanvas();
-	drawGlobes();
-	drawGradient();
-	drawInfo();
-	drawHelp();
-}
-function resetAll() {
-	initializeAll();
-	loadGeometry(geometryAtLOD[0]);
-	clearAllCanvas();
-	if (debugFlag === 1) logAll();
-}
-
-function logAll() {console.log(geometryAtLOD[0], globe, land, coastlines, borders, lakes, graticule, "tmp:", gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path, canvas, context); }
-
 loadGeometry();
 prepareDocument();
+addListeners();
 initializeAll();
 loadPreset(1);
 drawAll();
