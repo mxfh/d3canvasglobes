@@ -34,7 +34,7 @@
 "use strict";
 
 var element, globe, land, coastlines, borders, lakes, graticule,
-	fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor,
+	fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor, darkTone, brightTone,
 	width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
 	canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset,
 	geometryAtLOD, geometryLOD, topojsonPath, clipAngle,
@@ -43,7 +43,7 @@ var element, globe, land, coastlines, borders, lakes, graticule,
 	context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobeA, contextGlobeB,
 	posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta,
 	momentumFlag, mouseDown, shiftKeyDown, shiftToggle, altKeyDown,
-	showGradient, showGradientZoombased, showGraticule, switchColors,
+	showGradient,   showGradientZoombased, showGraticule, switchColors,
 	showBorders, showLakes, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes,
 	pi = Math.PI, radToDegFactor = 180 / pi,
 	debugFlag = 0;
@@ -53,13 +53,13 @@ Number.prototype.toDeg = function () {return this * radToDegFactor; };
 
 function logAll() {console.log(geometryAtLOD[0], globe, land, coastlines, borders, lakes, graticule, "tmp:", gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path, canvas, context); }
 function configDataSources() {
-topojsonPath = "topojson/";
-geometryAtLOD = [];
-// 0 is globe view zoom level
-geometryAtLOD[0] = topojsonPath + "ne_110m_world.json";
-geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
-geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
-geometryLOD = 0;
+	topojsonPath = "topojson/";
+	geometryAtLOD = [];
+	// 0 is globe view zoom level
+	geometryAtLOD[0] = topojsonPath + "ne_110m_world.json";
+	geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
+	geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
+	geometryLOD = 0;
 }
 function createGraticule() { // create graticules as GeoJSON on the fly
 	var lonLat, i, j, graticuleGeoJson = {type: "FeatureCollection", "features": []}; //declare array
@@ -155,6 +155,8 @@ function initializeColors() {
 	fillColorB = "rgba(44, 123, 182, 0.5)";
 	textColor = "rgba(0, 0, 0, 0.7)";
 	gradientSphereColor = "rgba(176, 120, 200)";
+	darkTone = "rgba(26, 17, 16, 1)";
+	brightTone = "rgba(240, 234, 214, 1)";
 }
 function initializeProjection() {
 	rArrays = [[0, 0, 0], [0, 0, 0]];
@@ -181,28 +183,28 @@ function initializeProjection() {
 	yTmp = 0;
 }
 function initializeFlags() {
-gammaAtmp = 0;
-gammaBtmp = 0;
-gammaStart = 0;
-mouseDown = 0;
-shiftKeyDown = 0;
-shiftToggle = 0;
-altKeyDown = 0;
-showGradient = 1;
-showGradientZoombased = 1;
-showGraticule = 0;
-showBorders = 0;
-showCoastlines = 0;
-showLakes = 0;
-showGlobes = [1, 1];
-selectedGlobes = [1, 0];
-updateGlobes = [1, 1];
-showHelp = 1;
-showInfo = 1;
-switchColors = 0;
-momentumFlag = 1;
+	gammaAtmp = 0;
+	gammaBtmp = 0;
+	gammaStart = 0;
+	mouseDown = 0;
+	shiftKeyDown = 0;
+	shiftToggle = 0;
+	altKeyDown = 0;
+	showGradient = 1;
+	showGradientZoombased = 1;
+	showGraticule = 0;
+	showBorders = 0;
+	showCoastlines = 0;
+	showLakes = 0;
+	showGlobes = [1, 1];
+	selectedGlobes = [1, 0];
+	updateGlobes = [1, 1];
+	showHelp = 1;
+	showInfo = 1;
+	switchColors = 0;
+	momentumFlag = 1;
 }
-function initializeAll(){
+function initializeAll() {
 	initializeLayout();
 	initializeColors();
 	initializeProjection();
@@ -210,17 +212,17 @@ function initializeAll(){
 }
 function createGradientSphere() {
 	gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
-	gradientSphere.addColorStop(0,    gradientSphereColor.setAlpha(0   ));
-	gradientSphere.addColorStop(0.1,  gradientSphereColor.setAlpha(0.01));
-	gradientSphere.addColorStop(0.3,  gradientSphereColor.setAlpha(0.02));
-	gradientSphere.addColorStop(0.5,  gradientSphereColor.setAlpha(0.05));
-	gradientSphere.addColorStop(0.65, gradientSphereColor.setAlpha(0.09));
-	gradientSphere.addColorStop(0.75, gradientSphereColor.setAlpha(0.14));
-	gradientSphere.addColorStop(0.825,gradientSphereColor.setAlpha(0.2 ));
-	gradientSphere.addColorStop(0.9,  gradientSphereColor.setAlpha(0.29));
-	gradientSphere.addColorStop(0.95, gradientSphereColor.setAlpha(0.42));
-	gradientSphere.addColorStop(0.98, gradientSphereColor.setAlpha(0.55));
-	gradientSphere.addColorStop(1,    gradientSphereColor.setAlpha(0.62));
+	gradientSphere.addColorStop(0,     gradientSphereColor.setAlpha(0));
+	gradientSphere.addColorStop(0.1,   gradientSphereColor.setAlpha(0.01));
+	gradientSphere.addColorStop(0.3,   gradientSphereColor.setAlpha(0.02));
+	gradientSphere.addColorStop(0.5,   gradientSphereColor.setAlpha(0.05));
+	gradientSphere.addColorStop(0.65,  gradientSphereColor.setAlpha(0.09));
+	gradientSphere.addColorStop(0.75,  gradientSphereColor.setAlpha(0.14));
+	gradientSphere.addColorStop(0.825, gradientSphereColor.setAlpha(0.2));
+	gradientSphere.addColorStop(0.9,   gradientSphereColor.setAlpha(0.29));
+	gradientSphere.addColorStop(0.95,  gradientSphereColor.setAlpha(0.42));
+	gradientSphere.addColorStop(0.98,  gradientSphereColor.setAlpha(0.55));
+	gradientSphere.addColorStop(1,     gradientSphereColor.setAlpha(0.62));
 }
 
 //initialize Gradient
@@ -292,7 +294,7 @@ function drawInfo() {
 		clearBackgroundRect(0, 0, 3, 3, contextInfo);
 		backgroundRect(1, 0, 1, 3, fillColorA, contextInfo);
 		backgroundRect(2, 0, 1, 3, fillColorB, contextInfo);
-		contextInfo.fillStyle = "rgba(0, 0, 0, 0.7)";
+		contextInfo.fillStyle = textColor;
 		if (x !== undefined) {contextInfo.fillText("x :", getX(0), getYtext(0)); }
 		if (y !== undefined) {contextInfo.fillText("y :", getX(0), getYtext(1)); }
 		contextInfo.fillText("φ :", getX(1), getYtext(0));
@@ -341,37 +343,59 @@ function drawHelp() {
 }
 function drawGlobe(rArray, fillColor, localContext) {
 	// -λ, -φ, γ
-	var localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
+	var borderAlphaKnockOut = 0.8,
+		borderAlphaLine = 0.5,
+		CoastlineAlpha = 0.9,
+		localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
 	// tweak projections here
 	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
 	path = d3.geo.path().projection(projection).context(localContext);
-	// Land features
-	localContext.beginPath();
+	// Filled Style
+	localContext.globalCompositeOperation = "source-over";
 	if (!showCoastlines) {
+		localContext.globalCompositeOperation = "source-over";
+		// Alpha is one for knock-out
+		localContext.fillStyle = fillColor.setAlpha(1);
+
+		// subtract lakes from continents
+		// TODO: improve composition, currently pixelated in Chrome
+		if (showLakes) {
+			localContext.beginPath();
+			path(lakes);
+			localContext.fill();
+			localContext.globalCompositeOperation = "source-out";
+		}
+		if (showBorders) {
+			localContext.strokeStyle = fillColor.setAlpha(borderAlphaKnockOut);
+			localContext.beginPath();
+			path(borders);
+			localContext.stroke();
+			localContext.globalCompositeOperation = "source-out";
+		}
 		localContext.fillStyle = fillColor;
+		localContext.beginPath();
 		path(land);
 		localContext.fill();
+		localContext.globalCompositeOperation = "source-over";
+
 	} else {
+		localContext.strokeStyle = fillColor.setAlpha(CoastlineAlpha);
 		localContext.beginPath();
 		path(coastlines);
-		localContext.strokeStyle = fillColor;
 		localContext.stroke();
+		if (showLakes) {
+			localContext.beginPath();
+			path(lakes);
+			localContext.stroke();
+		}
+		if (showBorders) {
+			localContext.strokeStyle = fillColor.setAlpha(borderAlphaLine);
+			localContext.beginPath();
+			path(borders);
+			localContext.stroke();
+		}
 	}
-	// Lakes
-	if (showLakes) {
-		localContext.beginPath();
-		path(lakes);
-		if (showCoastlines) {localContext.strokeStyle = fillColor; localContext.stroke();}
-		else {localContext.fillStyle = "rgba(255, 255, 255, 0.5)"; localContext.fill(); }
-	}
-	// Land Borders
-	if (showBorders) {
-		localContext.beginPath();
-		path(borders);
-		if (showCoastlines) {localContext.strokeStyle = fillColor; }
-		if (!showCoastlines) {localContext.strokeStyle = "rgba(255, 255, 255, 0.5)"; }
-		localContext.stroke();
-	}
+
 	// Graticule
 	if (showGraticule) {
 		localContext.beginPath();
@@ -546,7 +570,7 @@ function keyDown(evt) {
 	case 192:                                                            // `
 	case 220:                                                            // ^
 		debugFlag = debugFlag.toggle();
-		if (debugFlag) {logAll();}
+		if (debugFlag) {logAll(); }
 		break;
 	default: validKey = 0; break;
 	}
@@ -578,15 +602,15 @@ function keyUp(evt) {
 }
 function zoom(delta) {
 	function setGeometryLOD(geometryLOD, forceNoGradientAtLOD, enableMomentumAtLOD) {
-		if (forceNoGradientAtLOD) {showGradientZoombased = 0; }
-		else {showGradientZoombased = 1; }
+		if (forceNoGradientAtLOD) {showGradientZoombased = 0;
+			} else {showGradientZoombased = 1; }
 		momentumFlag = enableMomentumAtLOD;
 		loadGeometry(geometryAtLOD[geometryLOD]);
 	}
 	if (r >= zoomMin && r <= zoomMax) {
 		r = r + delta * (r / 10);
-		if (r >= diagonal / 2) {clipAngle = 90 - (Math.acos((diagonal / 2) / r)).toDeg(); }
-		else {clipAngle = 89; }
+		if (r >= diagonal / 2) {clipAngle = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
+			} else {clipAngle = 89; }
 		if (r <= diagonal) {setGeometryLOD(0, 0, 1); }
 		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 1); }
 		if (r > diagonal * 4 && geometryLOD !== 2) {setGeometryLOD(2, 1, 1); }
@@ -599,9 +623,9 @@ function zoom(delta) {
 	}
 }
 function wheel(event) {
-	if (!event)	{event = window.event; } // IE
-	if (event.wheelDelta) { delta = event.wheelDelta / 120; }
-	else if (event.detail) {delta = -event.detail / 3; }
+	if (!event) {event = window.event; } // IE
+	if (event.wheelDelta) { delta = event.wheelDelta / 120;
+		} else if (event.detail) {delta = -event.detail / 3; }
 	if (delta) {zoom(delta); }
 	if (event.preventDefault) {event.preventDefault(); event.returnValue = false; }
 }
