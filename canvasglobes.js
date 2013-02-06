@@ -32,25 +32,27 @@
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 "use strict";
+
 var element, globe, land, coastlines, borders, lakes, graticule,
-	fillColorA, fillColorB, textColor, gradientSphere,
+	fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor,
 	width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
 	canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset,
 	geometryAtLOD, geometryLOD, topojsonPath, clipAngle,
 	presets, rArrays, gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path,
 	canvas, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobeA, canvasGlobeB,
 	context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobeA, contextGlobeB,
-	posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel,
-	pi = Math.PI, radToDegFactor = 180 / pi, delta,
+	posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta,
 	momentumFlag, mouseDown, shiftKeyDown, shiftToggle, altKeyDown,
 	showGradient, showGradientZoombased, showGraticule, switchColors,
 	showBorders, showLakes, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes,
-	debugFlag;
+	pi = Math.PI, radToDegFactor = 180 / pi,
+	debugFlag = 0;
 
-debugFlag = 0;
+// math
+Number.prototype.toDeg = function () {return this * radToDegFactor; };
+
 function logAll() {console.log(geometryAtLOD[0], globe, land, coastlines, borders, lakes, graticule, "tmp:", gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path, canvas, context); }
-
-
+function configDataSources() {
 topojsonPath = "topojson/";
 geometryAtLOD = [];
 // 0 is globe view zoom level
@@ -58,7 +60,7 @@ geometryAtLOD[0] = topojsonPath + "ne_110m_world.json";
 geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
 geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
 geometryLOD = 0;
-
+}
 function createGraticule() { // create graticules as GeoJSON on the fly
 	var lonLat, i, j, graticuleGeoJson = {type: "FeatureCollection", "features": []}; //declare array
 	for (i = 0; i < 5; i = i + 1) {
@@ -88,21 +90,7 @@ function getContextByCanvasInArray(canvasInArray) {
 	}
 	return localContext;
 }
-function createGradientSphere() {
-	gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
-	gradientSphere.addColorStop(0, "rgba(127, 127, 127, 0)");
-	gradientSphere.addColorStop(0.1, "rgba(127, 127, 127, 0.01)");
-	gradientSphere.addColorStop(0.3, "rgba(127, 127, 127, 0.02)");
-	gradientSphere.addColorStop(0.5, "rgba(127, 127, 127, 0.05)");
-	gradientSphere.addColorStop(0.65, "rgba(127, 127, 127, 0.09)");
-	gradientSphere.addColorStop(0.75, "rgba(127, 127, 127, 0.14)");
-	gradientSphere.addColorStop(0.825, "rgba(127, 127, 127, 0.2)");
-	gradientSphere.addColorStop(0.9, "rgba(127, 127, 127, 0.29)");
-	gradientSphere.addColorStop(0.95, "rgba(127, 127, 127, 0.42)");
-	gradientSphere.addColorStop(0.98, "rgba(127, 127, 127, 0.55)");
-	gradientSphere.addColorStop(1, "rgba(127, 127, 127, 0.62)");
-}
-function initializeAll() {
+function initializeLayout() {
 	width = window.innerWidth;
 	height = window.innerHeight - 5; // needs fix -5 should not be necessary for no scroll bars
 	minSize = 640;
@@ -160,31 +148,16 @@ function initializeAll() {
 	lineNumber = 0;
 	origin = [canvasPadding, canvasPadding];
 	baselineOffset = 9;
+}
+function initializeColors() {
 	//  ColorBrewer: RdYlBu
 	fillColorA = "rgba(215, 25, 28, 0.5)";
 	fillColorB = "rgba(44, 123, 182, 0.5)";
 	textColor = "rgba(0, 0, 0, 0.7)";
+	gradientSphereColor = "rgba(176, 120, 200)";
+}
+function initializeProjection() {
 	rArrays = [[0, 0, 0], [0, 0, 0]];
-	gammaAtmp = 0;
-	gammaBtmp = 0;
-	gammaStart = 0;
-	mouseDown = 0;
-	shiftKeyDown = 0;
-	shiftToggle = 0;
-	altKeyDown = 0;
-	showGradient = 1;
-	showGradientZoombased = 1;
-	showGraticule = 0;
-	showBorders = 0;
-	showCoastlines = 0;
-	showLakes = 0;
-	showGlobes = [1, 1];
-	selectedGlobes = [1, 0];
-	updateGlobes = [1, 1];
-	showHelp = 1;
-	showInfo = 1;
-	switchColors = 0;
-	momentumFlag = 1;
 	clipAngle = 88;
 	zoomMin = 10;
 	zoomMax = 10000;
@@ -206,19 +179,57 @@ function initializeAll() {
 	xRel = 0;
 	xTmp = 0;
 	yTmp = 0;
-	createGradientSphere();
+}
+function initializeFlags() {
+gammaAtmp = 0;
+gammaBtmp = 0;
+gammaStart = 0;
+mouseDown = 0;
+shiftKeyDown = 0;
+shiftToggle = 0;
+altKeyDown = 0;
+showGradient = 1;
+showGradientZoombased = 1;
+showGraticule = 0;
+showBorders = 0;
+showCoastlines = 0;
+showLakes = 0;
+showGlobes = [1, 1];
+selectedGlobes = [1, 0];
+updateGlobes = [1, 1];
+showHelp = 1;
+showInfo = 1;
+switchColors = 0;
+momentumFlag = 1;
+}
+function initializeAll(){
+	initializeLayout();
+	initializeColors();
+	initializeProjection();
+	initializeFlags();
+}
+function createGradientSphere() {
+	gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
+	gradientSphere.addColorStop(0,    gradientSphereColor.setAlpha(0   ));
+	gradientSphere.addColorStop(0.1,  gradientSphereColor.setAlpha(0.01));
+	gradientSphere.addColorStop(0.3,  gradientSphereColor.setAlpha(0.02));
+	gradientSphere.addColorStop(0.5,  gradientSphereColor.setAlpha(0.05));
+	gradientSphere.addColorStop(0.65, gradientSphereColor.setAlpha(0.09));
+	gradientSphere.addColorStop(0.75, gradientSphereColor.setAlpha(0.14));
+	gradientSphere.addColorStop(0.825,gradientSphereColor.setAlpha(0.2 ));
+	gradientSphere.addColorStop(0.9,  gradientSphereColor.setAlpha(0.29));
+	gradientSphere.addColorStop(0.95, gradientSphereColor.setAlpha(0.42));
+	gradientSphere.addColorStop(0.98, gradientSphereColor.setAlpha(0.55));
+	gradientSphere.addColorStop(1,    gradientSphereColor.setAlpha(0.62));
 }
 
-// math functions
-function sign(number) {return number ? number < 0 ? -1 : 1 : 0; }  // sign function (+/-/0) of number http://stackoverflow.com/questions/7624920/number-sign-in-javascript
-function radToDeg(rad) {return rad * radToDegFactor; }
 //initialize Gradient
 function loadPreset(p) {rArrays = presets[p].slice(); }
 function calcTan() { // Calculate Angle from projection center
 	var gamma, deltaX, deltaY;
 	deltaX = x - posX;
 	deltaY = y - posY;
-	gamma = radToDeg(-Math.atan2(deltaY, deltaX));
+	gamma = (-Math.atan2(deltaY, deltaX)).toDeg();
 	return gamma;
 }
 function prepareDocument() {
@@ -270,7 +281,6 @@ function clearBackgroundRect(col, row, cols, rows, localContext) {
 	localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus, cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
 }
 
-Number.prototype.mod = function (n) {return ((this % n) + n) % n; };
 function drawInfo() {
 	if (showInfo) {
 		var lambdaA = (rArrays[0][0] + 180).mod(360) - 180,
@@ -319,7 +329,7 @@ function drawHelp() {
 		contextHelp.fillText("Show/hide secondary globe:  [Space Bar]", xRight, getYtext(newLine(2)));
 		contextHelp.fillText("Show/hide Graticule:  [G]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Show/hide land Borders:  [B]", xRight, getYtext(newLine()));
-		contextHelp.fillText("Show/hide Coastlines only (more performant):  [C]", xRight, getYtext(newLine()));
+		contextHelp.fillText("Coastlines only (faster):  [C]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Show/hide Lakes:  [L]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Switch globe colors:  [S]", xRight, getYtext(newLine()));
 		contextHelp.fillText("Draw shadow decoration:  [D]", xRight, getYtext(newLine(2)));
@@ -335,6 +345,7 @@ function drawGlobe(rArray, fillColor, localContext) {
 	// tweak projections here
 	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
 	path = d3.geo.path().projection(projection).context(localContext);
+	// Land features
 	localContext.beginPath();
 	if (!showCoastlines) {
 		localContext.fillStyle = fillColor;
@@ -343,16 +354,17 @@ function drawGlobe(rArray, fillColor, localContext) {
 	} else {
 		localContext.beginPath();
 		path(coastlines);
-		//localContext.strokeStyle = "rgba(0, 0, 0, 0.3)";
 		localContext.strokeStyle = fillColor;
 		localContext.stroke();
 	}
+	// Lakes
 	if (showLakes) {
 		localContext.beginPath();
-		localContext.fillStyle = "rgba(255, 255, 255, 0.75)";
 		path(lakes);
-		localContext.fill();
+		if (showCoastlines) {localContext.strokeStyle = fillColor; localContext.stroke();}
+		else {localContext.fillStyle = "rgba(255, 255, 255, 0.5)"; localContext.fill(); }
 	}
+	// Land Borders
 	if (showBorders) {
 		localContext.beginPath();
 		path(borders);
@@ -360,6 +372,7 @@ function drawGlobe(rArray, fillColor, localContext) {
 		if (!showCoastlines) {localContext.strokeStyle = "rgba(255, 255, 255, 0.5)"; }
 		localContext.stroke();
 	}
+	// Graticule
 	if (showGraticule) {
 		localContext.beginPath();
 		path(graticule);
@@ -463,9 +476,9 @@ function stopTrack() {
 	mouseDown = 0;
 	if (momentumFlag) {
 		var refreshIntervalId = setInterval(function () {
-			var linearSlowdown = r / 500, factorSlowdown = 0.98;
-			yRel = (yRel) * factorSlowdown - sign(yRel) * linearSlowdown;
-			xRel = (xRel) * factorSlowdown - sign(xRel) * linearSlowdown;
+			var linearSlowdown = r / 250, factorSlowdown = 0.99;
+			yRel = (yRel) * factorSlowdown - yRel.sign() * linearSlowdown;
+			xRel = (xRel) * factorSlowdown - xRel.sign() * linearSlowdown;
 			rotate();
 			drawGlobes();
 			if ((Math.abs(xRel) < 1 && Math.abs(yRel) < 1) || !momentumFlag) {
@@ -473,11 +486,6 @@ function stopTrack() {
 			}
 		}, 1000 / 48);
 	}
-}
-function toggle(p) {
-	if (p) {p = 0; }
-	else {p = 1; }
-	return p;
 }
 
 function loadGeometry(topojsonData) {
@@ -495,6 +503,7 @@ function loadGeometry(topojsonData) {
 }
 
 function resetAll() {
+	if (debugFlag) {logAll(); }
 	initializeAll();
 	loadGeometry(geometryAtLOD[0]);
 	clearAllCanvas();
@@ -513,44 +522,47 @@ function keyDown(evt) {
 			gammaStart = calcTan();
 		}
 		break;
-	case 32: showGlobes[1] = toggle(showGlobes[1]); drawAll(); break;   // Space
-	case 48: loadPreset(0); drawAll(); break;                           // 0
-	case 49: loadPreset(1); drawAll(); break;                           // 1
-	case 50: loadPreset(2); drawAll(); break;                           // 2
-	case 51: loadPreset(3); drawAll(); break;                           // 3
-	case 52: loadPreset(4); drawAll(); break;                           // 4
-	case 53: loadPreset(5); drawAll(); break;                           // 5
-	case 54: loadPreset(6); drawAll(); break;                           // 6
-	case 55: loadPreset(7); drawAll(); break;                           // 7
-	case 56: loadPreset(8); drawAll(); break;                           // 8
-	case 57: loadPreset(9); drawAll(); break;                           // 9
-	case 66: showBorders = toggle(showBorders);  drawAll(); break;      // B
-	case 67: showCoastlines = toggle(showCoastlines); drawAll(); break; // C
-	case 68: showGradient = toggle(showGradient); drawAll(); break;     // D
-	case 71: showGraticule = toggle(showGraticule); drawAll(); break;   // G
-	case 72: showHelp = toggle(showHelp); drawAll(); break;             // H
-	case 73: showInfo = toggle(showInfo); drawAll(); break;             // L
-	case 76: showLakes = toggle(showLakes); drawAll(); break;           // L
-	case 77: momentumFlag = toggle(momentumFlag); break;                // M
-	case 82: resetAll(); drawAll(); break;                              // R
-	case 83: switchColors = toggle(switchColors); drawAll(); break;     // S
-	case 192:                                                           // `
-	case 220: debugFlag = toggle(debugFlag); break;                     // ^
+	case 32: showGlobes[1] = showGlobes[1].toggle(); drawAll(); break;   // Space
+	case 48: loadPreset(0); drawAll(); break;                            // 0
+	case 49: loadPreset(1); drawAll(); break;                            // 1
+	case 50: loadPreset(2); drawAll(); break;                            // 2
+	case 51: loadPreset(3); drawAll(); break;                            // 3
+	case 52: loadPreset(4); drawAll(); break;                            // 4
+	case 53: loadPreset(5); drawAll(); break;                            // 5
+	case 54: loadPreset(6); drawAll(); break;                            // 6
+	case 55: loadPreset(7); drawAll(); break;                            // 7
+	case 56: loadPreset(8); drawAll(); break;                            // 8
+	case 57: loadPreset(9); drawAll(); break;                            // 9
+	case 66: showBorders = showBorders.toggle();  drawAll(); break;      // B
+	case 67: showCoastlines = showCoastlines.toggle(); drawAll(); break; // C
+	case 68: showGradient = showGradient.toggle(); drawAll(); break;     // D
+	case 71: showGraticule = showGraticule.toggle(); drawAll(); break;   // G
+	case 72: showHelp = showHelp.toggle(); drawAll(); break;             // H
+	case 73: showInfo = showInfo.toggle(); drawAll(); break;             // L
+	case 76: showLakes = showLakes.toggle(); drawAll(); break;           // L
+	case 77: momentumFlag = momentumFlag.toggle(); break;                // M
+	case 82: resetAll(); drawAll(); break;                               // R
+	case 83: switchColors = switchColors.toggle(); drawAll(); break;     // S
+	case 192:                                                            // `
+	case 220:                                                            // ^
+		debugFlag = debugFlag.toggle();
+		if (debugFlag) {logAll();}
+		break;
 	default: validKey = 0; break;
 	}
 	if (validKey && debugFlag) {
-		console.log("valid key:", evt.keyCode);
+		console.log("valid key down:", evt.keyCode);
 	}
 }
 function keyUp(evt) {
 	var validKey = 1;
 	evt = evt || window.event;
 	switch (evt.keyCode) {
-	case 16:                                        // Shift
+	case 16:                                                             // Shift
 		shiftKeyDown = 0;
-		shiftToggle = toggle(shiftToggle);
+		shiftToggle = shiftToggle.toggle();
 		break;
-	case 18:                                        // Alt
+	case 18:                                                             // Alt
 		altKeyDown = 0;
 		xRel = 0;
 		yRel = 0;
@@ -559,6 +571,9 @@ function keyUp(evt) {
 		gammaStart = undefined;
 		break;
 	default: validKey = 0; break;
+	}
+	if (validKey && debugFlag) {
+		console.log("valid key up:", evt.keyCode);
 	}
 }
 function zoom(delta) {
@@ -570,7 +585,7 @@ function zoom(delta) {
 	}
 	if (r >= zoomMin && r <= zoomMax) {
 		r = r + delta * (r / 10);
-		if (r >= diagonal / 2) {clipAngle = 90 - radToDeg(Math.acos((diagonal / 2) / r)); }
+		if (r >= diagonal / 2) {clipAngle = 90 - (Math.acos((diagonal / 2) / r)).toDeg(); }
 		else {clipAngle = 89; }
 		if (r <= diagonal) {setGeometryLOD(0, 0, 1); }
 		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 1); }
@@ -601,10 +616,12 @@ function addListeners() {
 	document.addEventListener("keyup", keyUp, false);
 	window.onblur = lostFocus(); // reset key states on lost focus
 }
+configDataSources();
 loadGeometry();
 prepareDocument();
 addListeners();
 initializeAll();
+createGradientSphere();
 loadPreset(1);
 drawAll();
 if (debugFlag) {logAll(); }
