@@ -72,10 +72,8 @@ function configGeoData() {
 	geometryAtLOD = [];
 	// 0 is globe view zoom level
 	geometryAtLOD[0] = topojsonPath + "ne_110m_world.json";
-	//geometryAtLOD[1] = topojsonPath + "ne_110m_world.json";
-	//geometryAtLOD[2] = topojsonPath + "ne_110m_world.json";
-	//geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
-	//geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
+	geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
+	geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
 	geometryLOD = 0;
 	graticuleIntervals = [30, 10, 5, 2, 1];
 	graticuleInterval = graticuleIntervals[0];
@@ -503,7 +501,7 @@ function drawGradient() {
 	}
 }
 function drawAll() {
-	updateGlobes = [1, 1];
+	setAllArrayValues(updateGlobes, 1);
 	clearAllCanvas();
 	drawGlobes();
 	drawGradient();
@@ -529,11 +527,12 @@ function loadGeometry() {
 }
 
 function setGeometryLOD(lod, forceNoGradientAtLOD, noMomentumAtLOD) {
+	// TODO decouple gradient switch from LOD
 	if (geometryLOD !== lod) {
 		if (lod === undefined) {lod = geometryLOD; }
 		geometryLOD = lod;
 		if (forceNoGradientAtLOD) {showGradientZoombased = 0;
-			} else {showGradientZoombased = 1; }
+			} else {showGradientZoombased = 1;}
 		if (noMomentumAtLOD) {momentumFlag = 0;
 			} else {momentumFlag = 1; }
 		// fallback to lowest level
