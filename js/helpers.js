@@ -11,6 +11,31 @@ Number.prototype.toggle = function () {
 	return flag;
 };
 
+function setAllArrayValues(array, value) {
+	var i;
+	for (i = 0; i < array.length; i += 1) {array[i] = value; }
+	return array;
+}
+
+function sumOfArrayMembers(array) {
+	var i, total = 0;
+	for (i = 0; i < array.length; i += 1) {total = total + array[i]; }
+	return total;
+}
+
+function shiftActiveArrayMember(array) {
+	var i, activeIndex, length = array.length;
+	activeIndex = array.indexOf(1);
+	if (debugFlag) {console.log("shift Array:", array, "Length:", length, "Active Index", activeIndex); }
+	if (activeIndex < 0) {activeIndex = 0; }
+	for (i = 0; i < length; i += 1) {
+		array[i] = 0;
+	}
+	if (activeIndex === length - 1) {array[0] = 1;
+		} else {array[activeIndex + 1] = 1; }
+	if (debugFlag) {console.log("shift Array:", array, "Length:", length, "Active Index", activeIndex); }
+}
+
 
 // Colors
 String.prototype.colorNameToHex = function (returnUnresolved) { // color list from http://stackoverflow.com/q/1573053/731179  with added gray/gray
@@ -82,7 +107,9 @@ String.prototype.setAlpha = function (alpha) {
 		} else {break; }
 		c = "rgba(" + c[1] + ", " + c[2] + ", " + c[3] + ", " + alpha + ")";
 		break;
-	default: c = this; break;
+	default:
+		c = this;
+		break;
 	}
 	return c;
 };

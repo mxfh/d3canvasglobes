@@ -23,7 +23,7 @@
 // TODO: Jump to Country
 // TODO: Compare countries
 // TODO: lock axis switches
-// TODO: show scale / orientation
+// TODO: show scale / distance circles / orientation
 // TODO: Dynamic Graticule
 // TODO: Switch projections
 // TODO: Raster
@@ -33,52 +33,122 @@
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 "use strict";
 
-var element, globe, land, coastlines, borders, lakes, graticule,
+var element, globe, land, coastlines, borders, lakes, graticule, graticuleIntervals, graticuleInterval,
 	fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor, darkTone, brightTone,
 	width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
-	canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset,
-	geometryAtLOD, geometryLOD, topojsonPath, clipAngle,
+	canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne,
+	geometryAtLOD, geometryLOD, topojsonPath, topojsonData, clipAngleMax, clipAngle,
 	presets, rArrays, gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path,
 	canvas, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobeA, canvasGlobeB,
 	context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobeA, contextGlobeB,
 	posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta,
-	momentumFlag, mouseDown, shiftKeyDown, shiftToggle, altKeyDown,
-	showGradient,   showGradientZoombased, showGraticule, switchColors,
+	momentumFlag, mouseDown, shiftKeyDown, altKeyDown,
+	showGradient, showGradientZoombased, showGraticule,
 	showBorders, showLakes, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes,
+	lastSelectedGlobes = [],
 	pi = Math.PI, radToDegFactor = 180 / pi,
 	debugFlag = 0;
 
 // math
 Number.prototype.toDeg = function () {return this * radToDegFactor; };
 
-function logAll() {console.log(geometryAtLOD[0], globe, land, coastlines, borders, lakes, graticule, "tmp:", gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path, canvas, context); }
-function configDataSources() {
+function logAll() {
+	console.log(
+		"LOD:", geometryLOD,
+		"LODs[]:", geometryAtLOD,
+		"globe:", globe,
+		"land:", land,
+		"coastlines:", coastlines,
+		borders, lakes, graticule,
+		"tmp:", gammaAtmp, gammaBtmp, gammaStart,
+		"currentRotation:", currentRotation,
+		"projection:", projection,
+		"path: ", path,
+		"canvas: ", canvas,
+		"context: ", context);
+}
+function configGeoData() {
 	topojsonPath = "topojson/";
 	geometryAtLOD = [];
 	// 0 is globe view zoom level
 	geometryAtLOD[0] = topojsonPath + "ne_110m_world.json";
-	geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
-	geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
+	//geometryAtLOD[1] = topojsonPath + "ne_110m_world.json";
+	//geometryAtLOD[2] = topojsonPath + "ne_110m_world.json";
+	//geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
+	//geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
 	geometryLOD = 0;
+	graticuleIntervals = [30, 10, 5, 2, 1];
+	graticuleInterval = graticuleIntervals[0];
 }
-function createGraticule() { // create graticules as GeoJSON on the fly
-	var lonLat, i, j, graticuleGeoJson = {type: "FeatureCollection", "features": []}; //declare array
-	for (i = 0; i < 5; i = i + 1) {
+function createGraticule(interval) { // create graticules as GeoJSON on the fly
+	var lonLat, i, iMax, j, jMax, k, kMax, l, lMax, pointsPerCircle = 360 / interval * 3, pointInterval,
+		graticuleGeoJson = {              // create object
+			type: "FeatureCollection",
+			"features": []                // declare array
+		};
+	if (interval === undefined) {interval = graticuleInterval; }
+	// ij - circles of latitude
+	pointInterval = 360 / pointsPerCircle;
+	iMax = 180 / interval;
+	jMax = pointsPerCircle;
+	// kl - meridians
+	kMax = 360 / interval;
+	lMax = pointsPerCircle / 2;
+
+	// Create circles of latitude
+	for (i = 0; i < iMax - 1; i += 1) {
 		graticuleGeoJson.features.push({
 			"type": "Feature",
 			"properties": {
-				"name": "Line of Latitude" + i
+				"name": ("Circle of Latitude at " + ((i + 1) * interval - 90)),
+				"latitude" : ((i + 1) * interval - 90),
+				"class" : "Graticule",
+				"type" : "CircleOfLatitude"
 			},
 			"geometry": {
 				"type": "LineString",
 				"coordinates": [ ]
 			}
 		});
-		for (j = 0; j <= 72; j = j + 1) {
-			lonLat = [j * 5 - 180, i * 30 - 60];
+		for (j = 0; j <= jMax; j += 1) {
+			lonLat = [j * pointInterval - 180, (i + 1) * interval - 90];
 			graticuleGeoJson.features[i].geometry.coordinates.push(lonLat);
 		}
 	}
+	// Create Meridians
+	for (k = 0; k < kMax; k += 1) {
+		graticuleGeoJson.features.push({
+			"type": "Feature",
+			"properties": {
+				"name": ("Meridian at " + (k * interval - 180)),
+				"longitude" : (k * interval - 180),
+				"class" : "Graticule",
+				"type" : "Meridian"
+			},
+			"geometry": {
+				"type": "LineString",
+				"coordinates": [ ]
+			}
+		});
+		for (l = 0; l <= lMax; l += 1) {
+			// less lines at poles
+			if (    // no 1°meridians up to 10°/20° based on interval
+				(l * pointInterval >= interval * 10 && l * pointInterval <= 180 - interval * 10)  ||
+					// keep 5° up to 30° based on interval
+					(l * pointInterval >= interval * 6 && l * pointInterval <= 180 - interval * 6 && (k * interval) % 5 === 0) ||
+					// keep 10° up to 30° based on interval
+					(l * pointInterval >= interval * 3 && l * pointInterval <= 180 - interval * 3 && (k * interval) % 10 === 0) ||
+					// keep 30° up to 30° based on interval
+					(l * pointInterval >= interval && l * pointInterval <= 180 - interval && (k * interval) % 30 === 0) ||
+					// always keep 90°
+					(k * interval) % 90 === 0
+			) {
+				lonLat = [k * interval - 180, l * pointInterval - 90];
+				graticuleGeoJson.features[i + k].geometry.coordinates.push(lonLat);
+			}
+		}
+	}
+
 	return graticuleGeoJson;
 }
 function getContextByCanvasInArray(canvasInArray) {
@@ -141,7 +211,8 @@ function initializeLayout() {
 	y = posY;
 	rInit = minDim / 2 - globePadding;
 	r = rInit;
-	colWidth = 34;
+	formatPrecisionOne = d3.format(".1f");
+	colWidth = 43;
 	rowHeight = 12;
 	padding = 3;
 	gutter = 15;
@@ -151,16 +222,18 @@ function initializeLayout() {
 }
 function initializeColors() {
 	//  ColorBrewer: RdYlBu
-	fillColorA = "rgba(215, 25, 28, 0.5)";
-	fillColorB = "rgba(44, 123, 182, 0.5)";
-	textColor = "rgba(0, 0, 0, 0.7)";
-	gradientSphereColor = "rgba(176, 120, 200)";
 	darkTone = "rgba(26, 17, 16, 1)";
 	brightTone = "rgba(240, 234, 214, 1)";
+	fillColorA = "rgba(215, 25, 28, 0.5)";
+	fillColorB = "rgba(44, 123, 182, 0.5)";
+	textColor = darkTone;
+	gradientSphereColor = "rgba(80, 80, 100, 0.5)";
+
 }
 function initializeProjection() {
 	rArrays = [[0, 0, 0], [0, 0, 0]];
-	clipAngle = 88;
+	clipAngleMax = 89;
+	clipAngle = clipAngleMax;
 	zoomMin = 10;
 	zoomMax = 10000;
 	delta = 0;
@@ -188,11 +261,10 @@ function initializeFlags() {
 	gammaStart = 0;
 	mouseDown = 0;
 	shiftKeyDown = 0;
-	shiftToggle = 0;
 	altKeyDown = 0;
 	showGradient = 1;
 	showGradientZoombased = 1;
-	showGraticule = 0;
+	showGraticule = 1;
 	showBorders = 0;
 	showCoastlines = 0;
 	showLakes = 0;
@@ -201,7 +273,6 @@ function initializeFlags() {
 	updateGlobes = [1, 1];
 	showHelp = 1;
 	showInfo = 1;
-	switchColors = 0;
 	momentumFlag = 1;
 }
 function initializeAll() {
@@ -272,6 +343,7 @@ function getX(column) {return origin[0] + (colWidth + gutter) * column; }
 function getXalignRight(column) { return getX(column) + colWidth; }
 function getY(row) {return origin[1] + rowHeight * row; }
 function getYtext(row) {return getY(row) + baselineOffset; }
+
 function backgroundRect(col, row, cols, rows, fillColor, localContext) {
 	localContext.beginPath();
 	localContext.rect(getX(col) - padding, getY(row) - padding, cols * colWidth + (cols - 1) * gutter + padding * 2, rows * rowHeight + padding * 2);
@@ -306,12 +378,12 @@ function drawInfo() {
 		contextInfo.textAlign = "right";
 		if (x !== undefined) {contextInfo.fillText(x, getXalignRight(0), getYtext(0)); }
 		if (y !== undefined) {contextInfo.fillText(y, getXalignRight(0), getYtext(1)); }
-		contextInfo.fillText(Math.round(phiA), getXalignRight(1), getYtext(0));
-		contextInfo.fillText(Math.round(phiB), getXalignRight(2), getYtext(0));
-		contextInfo.fillText(Math.round(lambdaA), getXalignRight(1), getYtext(1));
-		contextInfo.fillText(Math.round(lambdaB), getXalignRight(2), getYtext(1));
-		if (gammaA !== 0) {contextInfo.fillText(Math.round(gammaA), getXalignRight(1), getYtext(2)); }
-		if (gammaB !== 0) {contextInfo.fillText(Math.round(gammaB), getXalignRight(2), getYtext(2)); }
+		contextInfo.fillText(formatPrecisionOne(phiA), getXalignRight(1), getYtext(0));
+		contextInfo.fillText(formatPrecisionOne(phiB), getXalignRight(2), getYtext(0));
+		contextInfo.fillText(formatPrecisionOne(lambdaA), getXalignRight(1), getYtext(1));
+		contextInfo.fillText(formatPrecisionOne(lambdaB), getXalignRight(2), getYtext(1));
+		if (gammaA !== 0) {contextInfo.fillText(formatPrecisionOne(gammaA), getXalignRight(1), getYtext(2)); }
+		if (gammaB !== 0) {contextInfo.fillText(formatPrecisionOne(gammaB), getXalignRight(2), getYtext(2)); }
 		contextInfo.textAlign = "left";
 	}
 }
@@ -345,41 +417,37 @@ function drawGlobe(rArray, fillColor, localContext) {
 	// -λ, -φ, γ
 	var borderAlphaKnockOut = 0.8,
 		borderAlphaLine = 0.5,
-		CoastlineAlpha = 0.9,
+		coastlineAlpha = 0.9,
+		mode = "destination-out",
+		modeDefault = "source-over",
 		localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
+
 	// tweak projections here
 	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
 	path = d3.geo.path().projection(projection).context(localContext);
-	// Filled Style
-	localContext.globalCompositeOperation = "source-over";
-	if (!showCoastlines) {
-		localContext.globalCompositeOperation = "source-over";
-		// Alpha is one for knock-out
-		localContext.fillStyle = fillColor.setAlpha(1);
 
-		// subtract lakes from continents
-		// TODO: improve composition, currently pixelated in Chrome
+	// Filled Style
+	if (!showCoastlines) {
+		localContext.fillStyle = fillColor;
+		localContext.beginPath();
+		path(land);
+		localContext.fill();
+		localContext.globalCompositeOperation = mode;
+		// subtract lakes and borders from continents
 		if (showLakes) {
+			localContext.fillStyle = fillColor.setAlpha(1);
 			localContext.beginPath();
 			path(lakes);
 			localContext.fill();
-			localContext.globalCompositeOperation = "source-out";
 		}
 		if (showBorders) {
 			localContext.strokeStyle = fillColor.setAlpha(borderAlphaKnockOut);
 			localContext.beginPath();
 			path(borders);
 			localContext.stroke();
-			localContext.globalCompositeOperation = "source-out";
 		}
-		localContext.fillStyle = fillColor;
-		localContext.beginPath();
-		path(land);
-		localContext.fill();
-		localContext.globalCompositeOperation = "source-over";
-
 	} else {
-		localContext.strokeStyle = fillColor.setAlpha(CoastlineAlpha);
+		localContext.strokeStyle = fillColor.setAlpha(coastlineAlpha);
 		localContext.beginPath();
 		path(coastlines);
 		localContext.stroke();
@@ -395,31 +463,27 @@ function drawGlobe(rArray, fillColor, localContext) {
 			localContext.stroke();
 		}
 	}
-
 	// Graticule
 	if (showGraticule) {
+		localContext.globalCompositeOperation = modeDefault;
 		localContext.beginPath();
 		path(graticule);
-		localContext.strokeStyle = fillColor;
+		localContext.strokeStyle = fillColor.setAlpha(0.25);
 		localContext.stroke();
 	}
+	localContext.globalCompositeOperation = modeDefault;
 }
 function drawGlobes() {
-	if (switchColors) {
-		var tmp = fillColorA;
-		fillColorA = fillColorB;
-		fillColorB = tmp;
-		switchColors = 0;
-	}
 	if (showGlobes[0] && (selectedGlobes[0] || updateGlobes[1])) {
 		clearCanvas(canvasGlobeA);
 		drawGlobe(rArrays[0], fillColorA, contextGlobeA);
+		updateGlobes[0] = 0;
 	}
 	if (showGlobes[1] && (selectedGlobes[1] || updateGlobes[1])) {
 		clearCanvas(canvasGlobeB);
 		drawGlobe(rArrays[1], fillColorB, contextGlobeB);
+		updateGlobes[1] = 0;
 	}
-	updateGlobes = [0, 0];
 }
 function drawGradient() {
 	clearCanvas(canvasGradient);
@@ -446,40 +510,60 @@ function drawAll() {
 	drawInfo();
 	drawHelp();
 }
-// interaction function
-function rotate() {
-	if (!shiftKeyDown) {
-		if (!shiftToggle) {
-			updateGlobes[0] = 1;
-			selectedGlobes = [1, 0];
-			if (!altKeyDown) {rArrays[0] = [rArrays[0][0] - xRel / r, rArrays[0][1] + yRel / r, rArrays[0][2]]; }
-			if (altKeyDown) {rArrays[0] = [rArrays[0][0], rArrays[0][1], gammaAtmp + calcTan() - gammaStart]; }
-		}
-		if (shiftToggle) {
-			updateGlobes[1] = 1;
-			selectedGlobes = [0, 1];
-			if (!altKeyDown) {rArrays[1] = [rArrays[1][0] - xRel / r, rArrays[1][1] + yRel / r, rArrays[1][2]]; }
-			if (altKeyDown) {rArrays[1] = [rArrays[1][0], rArrays[1][1], gammaBtmp + calcTan() - gammaStart]; }
-		}
+
+function loadGeometry() {
+	d3.json(topojsonData, function (error, json) {
+		if (error) {console.log(error); }
+		globe = {type: "Sphere"};
+		/** @namespace json.objects.land */
+		/** @namespace json.objects.coastline */
+		/** @namespace json.objects.landborders*/
+		/** @namespace json.objects.lakes */
+		land = topojson.object(json, json.objects.land);
+		coastlines = topojson.object(json, json.objects.coastline);
+		borders = topojson.object(json, json.objects.landborders);
+		lakes = topojson.object(json, json.objects.lakes);
+		graticule = createGraticule(graticuleInterval);
+		drawAll();
+	});
+}
+
+function setGeometryLOD(lod, forceNoGradientAtLOD, noMomentumAtLOD) {
+	if (geometryLOD !== lod) {
+		if (lod === undefined) {lod = geometryLOD; }
+		geometryLOD = lod;
+		if (forceNoGradientAtLOD) {showGradientZoombased = 0;
+			} else {showGradientZoombased = 1; }
+		if (noMomentumAtLOD) {momentumFlag = 0;
+			} else {momentumFlag = 1; }
+		// fallback to lowest level
+		if (geometryAtLOD[geometryLOD] === undefined) {geometryLOD = 0; }
+		topojsonData = geometryAtLOD[geometryLOD];
+		loadGeometry();
 	}
-	if (shiftKeyDown) {
-		updateGlobes = [1, 1];
-		selectedGlobes = [1, 1];
-		if (!altKeyDown) {
-			rArrays = [
-				[rArrays[0][0] - xRel / r, rArrays[0][1] + yRel / r, rArrays[0][2]],
-				[rArrays[1][0] - xRel / r, rArrays[1][1] + yRel / r, rArrays[1][2]]
-			];
-		}
-		if (altKeyDown) {
-			var diff = calcTan() - gammaStart;
-			rArrays = [
-				[rArrays[0][0], rArrays[0][1], gammaAtmp + diff],
-				[rArrays[1][0], rArrays[1][1], gammaBtmp + diff]
-			];
+}
+
+function resetAll() {
+	if (debugFlag) {logAll(); }
+	configGeoData();
+	initializeAll();
+	setGeometryLOD();
+	clearAllCanvas();
+	if (debugFlag) {logAll(); }
+}
+
+// interaction functions
+function rotate() {
+	var i;
+	for (i = 0; i < selectedGlobes.length; i += 1) {
+		if (selectedGlobes[i]) {
+			if (!altKeyDown) {rArrays[i] = [rArrays[i][0] - xRel / r, rArrays[i][1] + yRel / r, rArrays[i][2]]; }
+			if (altKeyDown) {rArrays[i] = [rArrays[i][0], rArrays[i][1], gammaAtmp + calcTan() - gammaStart]; }
+			updateGlobes[i] = 1;
 		}
 	}
 }
+
 function track(evt) {
 	x = evt.offsetX || evt.layerX;
 	y = evt.offsetY || evt.layerY;
@@ -497,48 +581,49 @@ function startTrack(evt) {
 	mouseDown = 1;
 }
 function stopTrack() {
+	var refreshIntervalId, linearSlowdown = r / 250, factorSlowdown = 0.99;
+	altKeyDown = 0;
 	mouseDown = 0;
 	if (momentumFlag) {
-		var refreshIntervalId = setInterval(function () {
-			var linearSlowdown = r / 250, factorSlowdown = 0.99;
+		refreshIntervalId = setInterval(function () {
 			yRel = (yRel) * factorSlowdown - yRel.sign() * linearSlowdown;
 			xRel = (xRel) * factorSlowdown - xRel.sign() * linearSlowdown;
 			rotate();
 			drawGlobes();
-			if ((Math.abs(xRel) < 1 && Math.abs(yRel) < 1) || !momentumFlag) {
-				clearInterval(refreshIntervalId);
-			}
+			drawInfo();
+			if ((Math.abs(xRel) < 1 && Math.abs(yRel) < 1) || !momentumFlag) {clearInterval(refreshIntervalId); }
 		}, 1000 / 48);
 	}
 }
 
-function loadGeometry(topojsonData) {
-	if (topojsonData === undefined) {topojsonData = geometryAtLOD[0]; }
-	d3.json(topojsonData, function (error, json) {
-		if (error) {console.log(error); }
-		globe = {type: "Sphere"};
-		land = topojson.object(json, json.objects.land);
-		coastlines = topojson.object(json, json.objects.coastline);
-		borders = topojson.object(json, json.objects.landborders);
-		lakes = topojson.object(json, json.objects.lakes);
-		graticule = createGraticule();
-		drawAll();
-	});
+function switchColors() {
+	var tmp = fillColorA;
+	fillColorA = fillColorB;
+	fillColorB = tmp;
 }
 
-function resetAll() {
-	if (debugFlag) {logAll(); }
-	initializeAll();
-	loadGeometry(geometryAtLOD[0]);
-	clearAllCanvas();
-	if (debugFlag) {logAll(); }
+function selectAllGlobes() {
+	if (!shiftKeyDown) {
+		if (debugFlag) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+		lastSelectedGlobes = selectedGlobes.slice(0);
+		selectedGlobes = setAllArrayValues(selectedGlobes, 1);
+		if (debugFlag) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+	}
 }
+
+function deSelectAllGlobes() {
+	if (debugFlag) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+	selectedGlobes = lastSelectedGlobes.slice(0);
+	if (debugFlag) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+}
+
+
 function keyDown(evt) {
 	var validKey = 1;
 	evt = evt || window.event;
 	switch (evt.keyCode) {
-	case 16: shiftKeyDown = 1; break;                                   // Shift
-	case 18:                                                            // Alt
+	case 16: selectAllGlobes(); shiftKeyDown = 1; break;                 // Shift
+	case 18:                                                             // Alt
 		altKeyDown = 1;
 		if (gammaAtmp === undefined || gammaBtmp === undefined || gammaStart === undefined) {
 			gammaAtmp = rArrays[0][2];
@@ -566,7 +651,7 @@ function keyDown(evt) {
 	case 76: showLakes = showLakes.toggle(); drawAll(); break;           // L
 	case 77: momentumFlag = momentumFlag.toggle(); break;                // M
 	case 82: resetAll(); drawAll(); break;                               // R
-	case 83: switchColors = switchColors.toggle(); drawAll(); break;     // S
+	case 83: switchColors(); drawAll(); break;                           // S
 	case 192:                                                            // `
 	case 220:                                                            // ^
 		debugFlag = debugFlag.toggle();
@@ -578,13 +663,15 @@ function keyDown(evt) {
 		console.log("valid key down:", evt.keyCode);
 	}
 }
+
 function keyUp(evt) {
 	var validKey = 1;
 	evt = evt || window.event;
 	switch (evt.keyCode) {
 	case 16:                                                             // Shift
 		shiftKeyDown = 0;
-		shiftToggle = shiftToggle.toggle();
+		deSelectAllGlobes();
+		shiftActiveArrayMember(selectedGlobes);
 		break;
 	case 18:                                                             // Alt
 		altKeyDown = 0;
@@ -600,23 +687,43 @@ function keyUp(evt) {
 		console.log("valid key up:", evt.keyCode);
 	}
 }
+
 function zoom(delta) {
-	function setGeometryLOD(geometryLOD, forceNoGradientAtLOD, enableMomentumAtLOD) {
-		if (forceNoGradientAtLOD) {showGradientZoombased = 0;
-			} else {showGradientZoombased = 1; }
-		momentumFlag = enableMomentumAtLOD;
-		loadGeometry(geometryAtLOD[geometryLOD]);
+	// visDeg visible angle in degrees
+	var i, visDeg = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
+	function setGraticuleInterval(interval) {
+		if (graticuleInterval !== interval) {
+			graticuleInterval = interval;
+			loadGeometry();
+		}
 	}
+	if (isNaN(visDeg)) {visDeg = 90; }
 	if (r >= zoomMin && r <= zoomMax) {
-		r = r + delta * (r / 10);
-		if (r >= diagonal / 2) {clipAngle = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
-			} else {clipAngle = 89; }
-		if (r <= diagonal) {setGeometryLOD(0, 0, 1); }
-		if (r > diagonal && r <= diagonal * 4 && geometryLOD !== 1) {setGeometryLOD(1, 1, 1); }
-		if (r > diagonal * 4 && geometryLOD !== 2) {setGeometryLOD(2, 1, 1); }
+		r = r + delta * r / 20;
+		// clip view
+		if (visDeg / 2 >= graticuleIntervals[0]) {setGraticuleInterval(graticuleIntervals[0]); }
+		if (visDeg / 2 < graticuleIntervals[0] && visDeg / 2 >= graticuleIntervals[1]) {setGraticuleInterval(graticuleIntervals[1]); }
+		if (visDeg / 2 < graticuleIntervals[1] && visDeg / 2 >= graticuleIntervals[2]) {setGraticuleInterval(graticuleIntervals[2]); }
+		if (visDeg / 2 < graticuleIntervals[2] && visDeg / 2 >= graticuleIntervals[3]) {setGraticuleInterval(graticuleIntervals[3]); }
+		if (visDeg / 2 < graticuleIntervals[3] && visDeg / 2 >= graticuleIntervals[4]) {setGraticuleInterval(graticuleIntervals[4]); }
+
+
+		if (r >= diagonal / 2 && delta > 0) { clipAngle = visDeg;
+			} else if (r >= diagonal / 2 && delta < 0) {clipAngle = visDeg * 1.1;
+			} else {clipAngle = clipAngleMax; }
+		if (debugFlag) {console.log(delta, visDeg, clipAngle); }
+
+		if (r <= diagonal) {setGeometryLOD(0, 0, 0); }
+		if (r > diagonal && r <= diagonal * 4) {setGeometryLOD(1, 1, 0); }
+		if (r > diagonal * 4) {setGeometryLOD(2, 1, 1); }
+
+		// clamp zoom
 		if (r < zoomMin) {r = zoomMin; }
 		if (r > zoomMax) {r = zoomMax; }
 		// clear gradient overlay on zoom resize
+		for (i = 0; i < updateGlobes.length; i += 1) {
+			updateGlobes[i] = 1;
+		}
 		createGradientSphere();
 		drawGlobes();
 		drawGradient();
@@ -639,9 +746,11 @@ function addListeners() {
 	document.addEventListener("keydown", keyDown, false);
 	document.addEventListener("keyup", keyUp, false);
 	window.onblur = lostFocus(); // reset key states on lost focus
+	window.onfocus = lostFocus(); // and regained focus
 }
-configDataSources();
-loadGeometry();
+
+configGeoData();
+setGeometryLOD();
 prepareDocument();
 addListeners();
 initializeAll();
