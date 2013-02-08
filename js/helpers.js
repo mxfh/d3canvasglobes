@@ -6,11 +6,8 @@ Number.prototype.mod = function (n) {return ((this % n) + n) % n; };
 // sign function (+/-/0) of number http://stackoverflow.com/questions/7624920/number-sign-in-javascript
 Number.prototype.sign = function () {return this ? this < 0 ? -1 : 1 : 0; };
 
-Number.prototype.toggle = function () {
-	var flag;
-	if (this) {flag = 0; } else { flag = 1; }
-	return flag;
-};
+Number.prototype.toggle = function () {return this ? 0 : 1; };
+Boolean.prototype.toggle = function () {return this ? false : true; };
 
 function setAllArrayValues(array, value) {
 	var i;
