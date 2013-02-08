@@ -16,57 +16,82 @@
 // All Natural Earth geometry is in public domain
 // http://www.naturalearthdata.com/
 //
-// TODO: Improve speed
-// TODO: dynamic canvas size and position by content extent
+// General
+// TODO: Improve rendering speed
+// TODO: Support more projections
+// High priority
 // TODO: add cities+labels
-// TODO: add mirror option
-// TODO: Jump to Country
 // TODO: Compare countries
+// Medium
+// TODO: skip for-loop when active globe known, use only for moving multiples at once,
+// Low priority
+// TODO: dynamic canvas size and position by content extent
+// TODO: add mirror option
 // TODO: lock axis switches
 // TODO: show scale / distance circles / orientation
-// TODO: Dynamic Graticule
-// TODO: Switch projections
+// TODO: Remove Graticule from Geojson
 // TODO: Raster
 // TODO: canvas resize on window resize
+// TODO: Great circles / Loxodrome from Point A to B
 // TODO: Animations > Plate tectonics
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
+
 "use strict";
 
 var element, globe, land, coastlines, borders, lakes, graticule, graticuleIntervals, graticuleInterval,
-	fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor, darkTone, brightTone,
+	fillColor, fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor,
+	darkTone, brightTone,
 	width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
 	canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne,
 	geometryAtLOD, geometryLOD, topojsonPath, topojsonData, clipAngleMax, clipAngle,
-	presets, rArrays, gammaAtmp, gammaBtmp, gammaStart, currentRotation, projection, path,
-	canvas, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobeA, canvasGlobeB,
-	context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobeA, contextGlobeB,
+	presets, rArrays, gammaTmp, gammaStart, currentRotation, projection, path,
+	canvas, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe,
+	context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe,
 	posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta,
-	momentumFlag, mouseDown, shiftKeyDown, altKeyDown,
+	momentumFlag, mouseDown, shiftKeyDown, altKeyDown, sKeyDown,
 	showGradient, showGradientZoombased, showGraticule,
-	showBorders, showLakes, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes,
-	lastSelectedGlobes = [],
-	pi = Math.PI, radToDegFactor = 180 / pi,
-	debugFlag = 0;
+	showBorders, showLakes, showHelp, showInfo, showCoastlines,
+	updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber,
+	pi = Math.PI, radToDegFactor = 180 / pi, hueWheel, hueShift,
+	debugLevel = 0, // 0 = off 1 = basic 2 = mouse 3 = all
+	numberOfGlobes;
 
 // math
 Number.prototype.toDeg = function () {return this * radToDegFactor; };
 
+function setFlags() {
+	mouseDown = 0;
+	shiftKeyDown = 0;
+	altKeyDown = 0;
+	sKeyDown = 0;
+	showGradient = 1;
+	showGradientZoombased = 1;
+	showGraticule = 0;
+	showBorders = 0;
+	showCoastlines = 0;
+	showLakes = 0;
+	showHelp = 1;
+	showInfo = 1;
+	momentumFlag = 1;
+}
+
 function logAll() {
-	console.log(
-		"LOD:", geometryLOD,
-		"LODs[]:", geometryAtLOD,
+	console.log("LOD:", geometryLOD,
+		"LODs[]:",
+		geometryAtLOD,
 		"globe:", globe,
 		"land:", land,
 		"coastlines:", coastlines,
 		borders, lakes, graticule,
-		"tmp:", gammaAtmp, gammaBtmp, gammaStart,
+		"tmp:", gammaTmp, gammaStart,
 		"currentRotation:", currentRotation,
 		"projection:", projection,
 		"path: ", path,
 		"canvas: ", canvas,
 		"context: ", context);
 }
+
 function configGeoData() {
 	topojsonPath = "topojson/";
 	geometryAtLOD = [];
@@ -154,11 +179,12 @@ function getContextByCanvasInArray(canvasInArray) {
 	if (canvasInArray.getContext) {
 		canvasInArray.width = width;
 		canvasInArray.height = height;
-		localContext = canvasInArray.getContext('2d');
+		localContext = canvasInArray.getContext("2d");
 	}
 	return localContext;
 }
 function initializeLayout() {
+	var i, canvasIndex = 0;
 	width = window.innerWidth;
 	height = window.innerHeight - 5; // needs fix -5 should not be necessary for no scroll bars
 	minSize = 640;
@@ -172,35 +198,45 @@ function initializeLayout() {
 		maxDim = width;
 	}
 	canvas = [];
-	// assign canvases
-	canvas[0] = document.getElementById('canvas_background');
-	canvas[1] = document.getElementById('canvas_globe_a');
-	canvas[2] = document.getElementById('canvas_globe_b');
-	canvas[3] = document.getElementById('canvas_gradient');
-	canvas[4] = document.getElementById('canvas_help');
-	canvas[5] = document.getElementById('canvas_info');
-	// define canvas aliases and layer order
-	canvasBackground = canvas[0];
-	canvasGlobeA = canvas[1];
-	canvasGlobeB = canvas[2];
-	canvasGradient = canvas[3];
-	canvasHelp = canvas[4];
-	canvasInfo = canvas[5];
+	canvasGlobe = [];
+
+	// assign canvas
+	canvas[canvasIndex] = document.getElementById("canvas_background");
+	canvasBackground = canvas[canvasIndex];
+
+	for (i = 0; i < numberOfGlobes; i += 1) {
+		canvasIndex += 1;
+		canvas[canvasIndex] = document.getElementById("canvas_globe_" + i);
+		canvasGlobe[i] = canvas[canvasIndex];
+
+	}
+	if (debugLevel > 0) {console.log("canvasGlobe[]:", canvasGlobe); }
+	canvas[canvasIndex + 1] = document.getElementById("canvas_gradient");
+	canvas[canvasIndex + 2] = document.getElementById("canvas_help");
+	canvas[canvasIndex + 3] = document.getElementById("canvas_info");
+	if (debugLevel > 0) {console.log("canvas[]:", canvas); }
+	// define canvas aliases
+	canvasGradient = canvas[canvasIndex + 1];
+	canvasHelp = canvas[canvasIndex + 2];
+	canvasInfo = canvas[canvasIndex + 3];
+
+	// assign context
 	context = [];
 	// assign context to layers, order is defined by canvas not here
-	context[0] = getContextByCanvasInArray(canvas[0]);
-	context[1] = getContextByCanvasInArray(canvas[1]);
-	context[2] = getContextByCanvasInArray(canvas[2]);
-	context[3] = getContextByCanvasInArray(canvas[3]);
-	context[4] = getContextByCanvasInArray(canvas[4]);
-	context[5] = getContextByCanvasInArray(canvas[5]);
-	// assign context aliases
+	for (i = 0; i < canvas.length; i += 1) {
+		context[i] = getContextByCanvasInArray(canvas[i]);
+	}
+	contextGlobe = [];
+	if (debugLevel > 0) {console.log("context[]:", context); }
+	for (i = 0; i < canvasGlobe.length; i += 1) {
+		contextGlobe[i] = getContextByCanvasInArray(canvasGlobe[i]);
+	}
+	if (debugLevel > 0) {console.log(contextGlobe); }
+	// assign context aliases analog to canvas
 	contextBackground = context[0];
-	contextGlobeA = context[1];
-	contextGlobeB = context[2];
-	contextGradient = context[3];
-	contextHelp = context[4];
-	contextInfo = context[5];
+	contextGradient = context[canvasIndex + 1];
+	contextHelp = context[canvasIndex + 2];
+	contextInfo = context[canvasIndex + 3];
 	canvasPadding = minDim / 25;
 	globePadding = canvasPadding * 0.61;
 	posX = width / 2;
@@ -218,18 +254,50 @@ function initializeLayout() {
 	origin = [canvasPadding, canvasPadding];
 	baselineOffset = 9;
 }
+
+function createColorWheel() {
+	var i,
+		hueAngle = 360 / numberOfGlobes,
+		saturation = 60,
+		lightness = 45,
+		alpha = 1 / Math.sqrt(numberOfGlobes + 0.5);
+	if (hueShift === undefined) {hueShift = 0; }
+	for (i = 0; i < numberOfGlobes; i += 1) {
+		if (fillColor[i] !== undefined || hueWheel) {
+			fillColor[i] =
+				"hsla(" +
+					((hueShift + hueAngle * i) % 360) + ", " +
+					saturation + "%, " +
+					lightness + "%, " +
+					alpha + ")";
+		}
+	}
+	if (debugLevel > 0) {console.log("hueAngle:", hueAngle, "hueStart:", hueShift, "fillColor[]:", fillColor); }
+}
+
 function initializeColors() {
 	//  ColorBrewer: RdYlBu
 	darkTone = "rgba(26, 17, 16, 1)";
 	brightTone = "rgba(240, 234, 214, 1)";
 	fillColorA = "rgba(215, 25, 28, 0.5)";
 	fillColorB = "rgba(44, 123, 182, 0.5)";
+	fillColor = [fillColorA, fillColorB];
+	// hueShift overrides predefined colors with computed hue at max angle
+	hueWheel = 1;
+	hueShift = 190;
+	createColorWheel();
 	textColor = darkTone;
 	gradientSphereColor = "rgba(80, 80, 100, 0.5)";
 
 }
 function initializeProjection() {
-	rArrays = [[0, 0, 0], [0, 0, 0]];
+	var i, angle = 360 / numberOfGlobes;
+	rArrays = [];
+	for (i = 0; i < numberOfGlobes; i += 1) {
+		// TOD0 :fancy init
+		rArrays.push([-65, -55, angle * i]);
+	}
+	if (debugLevel > 0) {console.log("initializeProjection() rArrays:", rArrays); }
 	clipAngleMax = 89;
 	clipAngle = clipAngleMax;
 	zoomMin = 10;
@@ -252,32 +320,26 @@ function initializeProjection() {
 	xRel = 0;
 	xTmp = 0;
 	yTmp = 0;
+	// set projection here:
+	//projection = d3.geo.orthographic().translate([posX, posY]);
+	projection = d3.geo.orthographic().translate([posX, posY]);
 }
-function initializeFlags() {
-	gammaAtmp = 0;
-	gammaBtmp = 0;
-	gammaStart = 0;
-	mouseDown = 0;
-	shiftKeyDown = 0;
-	altKeyDown = 0;
-	showGradient = 1;
-	showGradientZoombased = 1;
-	showGraticule = 1;
-	showBorders = 0;
-	showCoastlines = 0;
-	showLakes = 0;
-	showGlobes = [1, 1];
-	selectedGlobes = [1, 0];
-	updateGlobes = [1, 1];
-	showHelp = 1;
-	showInfo = 1;
-	momentumFlag = 1;
+function initializeGlobes() {
+	if (debugLevel > 0) {console.log("initializeGlobes()"); }
+	showGlobes = initializeArray(numberOfGlobes, 1);
+	updateGlobes = initializeArray(numberOfGlobes, 1);
+	selectedGlobes = initializeArray(numberOfGlobes, 0);
+	// select first globe
+	selectedGlobes[0] = 1;
+	if (debugLevel > 1) {console.log("Globes -- selected:", selectedGlobes, "show:", showGlobes, "update:", updateGlobes); }
+
 }
 function initializeAll() {
+	setFlags();
 	initializeLayout();
 	initializeColors();
 	initializeProjection();
-	initializeFlags();
+	initializeGlobes();
 }
 function createGradientSphere() {
 	gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
@@ -295,7 +357,15 @@ function createGradientSphere() {
 }
 
 //initialize Gradient
-function loadPreset(p) {rArrays = presets[p].slice(); }
+function loadPreset(p) {
+	if (debugLevel > 0) {console.log("loadPreset(" + p + ")"); }
+	var i;
+	for (i = 0; i < numberOfGlobes; i += 1) {
+		if (presets[p][i] !== undefined) {
+			rArrays[i] = presets[p][i];
+		} else { rArrays[i] = [0, 0, 0]; }
+	}
+}
 function calcTan() { // Calculate Angle from projection center
 	var gamma, deltaX, deltaY;
 	deltaX = x - posX;
@@ -304,25 +374,29 @@ function calcTan() { // Calculate Angle from projection center
 	return gamma;
 }
 function prepareDocument() {
+	var i, z = 1;
 	d3.select("body").append("div").attr("id", "map");
 	d3.selectAll("div").append("canvas")
 		.attr("id", "canvas_background")
-		.attr("style", "position: absolute; left: 0; top: 0; z-index: 1;");
-	d3.selectAll("div").append("canvas")
-		.attr("id", "canvas_globe_a")
-		.attr("style", "position: absolute; left: 0; top: 0; z-index: 2;");
-	d3.selectAll("div").append("canvas")
-		.attr("id", "canvas_globe_b")
-		.attr("style", "position: absolute; left: 0; top: 0; z-index: 3;");
+		.attr("style", "position: absolute; left: 0; top: 0; z-index: " + z + ";");
+	z += 1;
+	for (i = 0; i < numberOfGlobes; i += 1) {
+		d3.selectAll("div").append("canvas")
+			.attr("id", "canvas_globe_" + i)
+			.attr("style", "position: absolute; left: 0; top: 0; z-index: " + z + ";");
+		z += 1;
+	}
 	d3.selectAll("div").append("canvas")
 		.attr("id", "canvas_gradient")
-		.attr("style", "position: absolute; left: 0; top: 0; z-index: 4;");
+		.attr("style", "position: absolute; left: 0; top: 0; z-index: " + z + ";");
+	z += 1;
 	d3.selectAll("div").append("canvas")
 		.attr("id", "canvas_help")
-		.attr("style", "position: absolute; left: 0; top: 0; z-index: 5;");
+		.attr("style", "position: absolute; left: 0; top: 0; z-index: " + z + ";");
+	z += 1;
 	d3.selectAll("div").append("canvas")
 		.attr("id", "canvas_info")
-		.attr("style", "position: absolute; left: 0; top: 0; z-index: 6;");
+		.attr("style", "position: absolute; left: 0; top: 0; z-index: " + z + ";");
 }
 // Layout helper Functions
 function clearCanvasByContextIndex(layer) {context[layer].clearRect(0, 0, canvas[layer].width, canvas[layer].height); }
@@ -341,7 +415,6 @@ function getX(column) {return origin[0] + (colWidth + gutter) * column; }
 function getXalignRight(column) { return getX(column) + colWidth; }
 function getY(row) {return origin[1] + rowHeight * row; }
 function getYtext(row) {return getY(row) + baselineOffset; }
-
 function backgroundRect(col, row, cols, rows, fillColor, localContext) {
 	localContext.beginPath();
 	localContext.rect(getX(col) - padding, getY(row) - padding, cols * colWidth + (cols - 1) * gutter + padding * 2, rows * rowHeight + padding * 2);
@@ -353,39 +426,56 @@ function clearBackgroundRect(col, row, cols, rows, localContext) {
 	localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus, cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
 }
 
+// Draw to canvas
 function drawInfo() {
+	// TODO may be optimized by splitting into background and number display
+	// and updating only the changes of active globe,
+	// or by moving this completely to html
+	clearCanvas(canvasInfo);
 	if (showInfo) {
-		var lambdaA = (rArrays[0][0] + 180).mod(360) - 180,
-			phiA = (rArrays[0][1] + 180).mod(360) - 180,
-			gammaA = rArrays[0][2].mod(360),
-			lambdaB =  (rArrays[1][0] + 180).mod(360) - 180,
-			phiB = (rArrays[1][1] + 180).mod(360) - 180,
-			gammaB = rArrays[1][2].mod(360);
-		clearBackgroundRect(0, 0, 3, 3, contextInfo);
-		backgroundRect(1, 0, 1, 3, fillColorA, contextInfo);
-		backgroundRect(2, 0, 1, 3, fillColorB, contextInfo);
+		var i, col, xLeft, xRight, lambda, phi, gamma,
+			xZero = getX(0),
+			xZeroRight = getXalignRight(0),
+			yA = getYtext(0),
+			yB = getYtext(1),
+			yC = getYtext(2);
+
 		contextInfo.fillStyle = textColor;
-		if (x !== undefined) {contextInfo.fillText("x :", getX(0), getYtext(0)); }
-		if (y !== undefined) {contextInfo.fillText("y :", getX(0), getYtext(1)); }
-		contextInfo.fillText("φ :", getX(1), getYtext(0));
-		contextInfo.fillText("φ :", getX(2), getYtext(0));
-		contextInfo.fillText("λ :", getX(1), getYtext(1));
-		contextInfo.fillText("λ :", getX(2), getYtext(1));
-		if (gammaA !== 0) {contextInfo.fillText("γ :", getX(1), getYtext(2)); }
-		if (gammaB !== 0) {contextInfo.fillText("γ :", getX(2), getYtext(2)); }
-		contextInfo.textAlign = "right";
-		if (x !== undefined) {contextInfo.fillText(x, getXalignRight(0), getYtext(0)); }
-		if (y !== undefined) {contextInfo.fillText(y, getXalignRight(0), getYtext(1)); }
-		contextInfo.fillText(formatPrecisionOne(phiA), getXalignRight(1), getYtext(0));
-		contextInfo.fillText(formatPrecisionOne(phiB), getXalignRight(2), getYtext(0));
-		contextInfo.fillText(formatPrecisionOne(lambdaA), getXalignRight(1), getYtext(1));
-		contextInfo.fillText(formatPrecisionOne(lambdaB), getXalignRight(2), getYtext(1));
-		if (gammaA !== 0) {contextInfo.fillText(formatPrecisionOne(gammaA), getXalignRight(1), getYtext(2)); }
-		if (gammaB !== 0) {contextInfo.fillText(formatPrecisionOne(gammaB), getXalignRight(2), getYtext(2)); }
-		contextInfo.textAlign = "left";
+		if (x !== undefined) {
+			contextInfo.fillText("x :", xZero, yA);
+			contextInfo.textAlign = "right";
+			contextInfo.fillText(x, xZeroRight, yA);
+			contextInfo.textAlign = "left";
+		}
+		if (y !== undefined) {
+			contextInfo.fillText("y :", xZero, yB);
+			contextInfo.textAlign = "right";
+			contextInfo.fillText(y, xZeroRight, yB);
+			contextInfo.textAlign = "left";
+		}
+		for (i = 0; i < numberOfGlobes; i += 1) {
+			lambda = (rArrays[i][0] + 180).mod(360) - 180;
+			phi = (rArrays[i][1] + 180).mod(360) - 180;
+			gamma = rArrays[i][2].mod(360);
+			col = i + 1;
+			xLeft = getX(col);
+			xRight = getXalignRight(col);
+			backgroundRect(col, 0, 1, 3, fillColor[i], contextInfo);
+			contextInfo.fillStyle = textColor;
+			contextInfo.fillText("φ :", xLeft, yA);
+			contextInfo.fillText("λ :", xLeft, yB);
+			if (gamma !== 0) {contextInfo.fillText("γ :", xLeft, yC); }
+			contextInfo.textAlign = "right";
+			contextInfo.fillText(formatPrecisionOne(phi), xRight, yA);
+			contextInfo.fillText(formatPrecisionOne(lambda), xRight, yB);
+			if (gamma !== 0) {contextInfo.fillText(formatPrecisionOne(gamma), xRight, yC); }
+			contextInfo.textAlign = "left";
+		}
 	}
 }
 function drawHelp() {
+	// TODO may be moved to html
+	clearCanvas(canvasHelp);
 	if (showHelp) {
 		var xRight = width - canvasPadding;
 		lineNumber = 0;
@@ -412,6 +502,7 @@ function drawHelp() {
 	}
 }
 function drawGlobe(rArray, fillColor, localContext) {
+	if (debugLevel > 1) {console.log("Globe# " + currentGlobeNumber + " drawGlobe(rArray, fillColor, localContext):", rArray, fillColor, localContext); }
 	// -λ, -φ, γ
 	var borderAlphaKnockOut = 0.8,
 		borderAlphaLine = 0.5,
@@ -421,9 +512,9 @@ function drawGlobe(rArray, fillColor, localContext) {
 		localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
 
 	// tweak projections here
-	projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
+	projection = projection.rotate(localRotation).clipAngle(clipAngle).scale(r);
+	//projection = d3.geo.orthographic().rotate(localRotation).scale(r).translate([posX, posY]).clipAngle(clipAngle);
 	path = d3.geo.path().projection(projection).context(localContext);
-
 	// Filled Style
 	if (!showCoastlines) {
 		localContext.fillStyle = fillColor;
@@ -472,20 +563,19 @@ function drawGlobe(rArray, fillColor, localContext) {
 	localContext.globalCompositeOperation = modeDefault;
 }
 function drawGlobes() {
-	if (showGlobes[0] && (selectedGlobes[0] || updateGlobes[1])) {
-		clearCanvas(canvasGlobeA);
-		drawGlobe(rArrays[0], fillColorA, contextGlobeA);
-		updateGlobes[0] = 0;
-	}
-	if (showGlobes[1] && (selectedGlobes[1] || updateGlobes[1])) {
-		clearCanvas(canvasGlobeB);
-		drawGlobe(rArrays[1], fillColorB, contextGlobeB);
-		updateGlobes[1] = 0;
+	if (debugLevel > 0) {console.log("drawGlobes()", "updateGlobes[]", updateGlobes); }
+	var i;
+	for (i = 0; i < numberOfGlobes; i += 1) {
+		if (showGlobes[i] && (selectedGlobes[i] || updateGlobes[i])) {
+			currentGlobeNumber = i;
+			clearCanvas(canvasGlobe[i]);
+			drawGlobe(rArrays[i], fillColor[i], contextGlobe[i]);
+			updateGlobes[i] = 0;
+		}
 	}
 }
 function drawGradient() {
 	clearCanvas(canvasGradient);
-	projection = d3.geo.orthographic().scale(r).translate([posX, posY]).clipAngle(clipAngle);
 	path = d3.geo.path().projection(projection).context(contextGradient);
 	if (showGradient && showGradientZoombased) {
 		contextGradient.beginPath();
@@ -500,15 +590,26 @@ function drawGradient() {
 		contextGradient.stroke();
 	}
 }
-function drawAll() {
+function setAllGlobesToUpdate() {
 	setAllArrayValues(updateGlobes, 1);
-	clearAllCanvas();
+	if (debugLevel > 0) {console.log("setAllGlobesToUpdate()", "updateGlobes[]", updateGlobes); }
+}
+
+function drawAllGlobes() {
+	if (debugLevel > 0) {console.log("drawAllGlobes()"); }
+	setAllGlobesToUpdate();
 	drawGlobes();
+}
+
+function drawAll() {
+	if (debugLevel > 0) {console.log("drawAll()"); }
+	drawAllGlobes();
 	drawGradient();
 	drawInfo();
 	drawHelp();
 }
 
+// Handle geometry
 function loadGeometry() {
 	d3.json(topojsonData, function (error, json) {
 		if (error) {console.log(error); }
@@ -525,14 +626,13 @@ function loadGeometry() {
 		drawAll();
 	});
 }
-
 function setGeometryLOD(lod, forceNoGradientAtLOD, noMomentumAtLOD) {
 	// TODO decouple gradient switch from LOD
 	if (geometryLOD !== lod) {
 		if (lod === undefined) {lod = geometryLOD; }
 		geometryLOD = lod;
 		if (forceNoGradientAtLOD) {showGradientZoombased = 0;
-			} else {showGradientZoombased = 1;}
+			} else {showGradientZoombased = 1; }
 		if (noMomentumAtLOD) {momentumFlag = 0;
 			} else {momentumFlag = 1; }
 		// fallback to lowest level
@@ -542,31 +642,37 @@ function setGeometryLOD(lod, forceNoGradientAtLOD, noMomentumAtLOD) {
 	}
 }
 
-function resetAll() {
-	if (debugFlag) {logAll(); }
-	configGeoData();
-	initializeAll();
+// interaction functions
+
+function changeNumberOfGlobes() {
+	if (numberOfGlobes < 2 || undefined) {
+		numberOfGlobes = 1;
+		console.log("Rendering " + numberOfGlobes + " Globe");
+	} else {console.info("Rendering " + numberOfGlobes + " Globes"); }
+	if (debugLevel > 0) {console.info("start globe change"); }
+	d3.selectAll("div").remove();
+	prepareDocument();
+	addListeners();
 	setGeometryLOD();
-	clearAllCanvas();
-	if (debugFlag) {logAll(); }
+	initializeAll();
+	createGradientSphere();
 }
 
-// interaction functions
 function rotate() {
 	var i;
 	for (i = 0; i < selectedGlobes.length; i += 1) {
 		if (selectedGlobes[i]) {
 			if (!altKeyDown) {rArrays[i] = [rArrays[i][0] - xRel / r, rArrays[i][1] + yRel / r, rArrays[i][2]]; }
-			if (altKeyDown) {rArrays[i] = [rArrays[i][0], rArrays[i][1], gammaAtmp + calcTan() - gammaStart]; }
+			if (altKeyDown) {rArrays[i] = [rArrays[i][0], rArrays[i][1], gammaTmp[i] + calcTan() - gammaStart]; }
 			updateGlobes[i] = 1;
 		}
 	}
 }
-
 function track(evt) {
+	if (debugLevel > 2) {console.log("track(evt)", "evt:", evt); }
 	x = evt.offsetX || evt.layerX;
 	y = evt.offsetY || evt.layerY;
-	if (mouseDown) {
+	if (mouseDown || altKeyDown) {
 		xRel = x - xTmp;
 		yRel = y - yTmp;
 		rotate();
@@ -594,73 +700,102 @@ function stopTrack() {
 		}, 1000 / 48);
 	}
 }
-
 function switchColors() {
 	var tmp = fillColorA;
 	fillColorA = fillColorB;
 	fillColorB = tmp;
 }
+var refreshColorsInterval;
+
+function cycleColors() {
+	refreshColorsInterval = setInterval(function () {
+		hueShift = (hueShift - 360 / numberOfGlobes) % 360;
+		createColorWheel();
+		drawAllGlobes();
+		drawInfo();
+	}, 1000 / 10);
+}
 
 function selectAllGlobes() {
 	if (!shiftKeyDown) {
-		if (debugFlag) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+		if (debugLevel > 0) {console.log("selectAllGlobes()"); }
+		if (debugLevel > 1) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 		lastSelectedGlobes = selectedGlobes.slice(0);
 		selectedGlobes = setAllArrayValues(selectedGlobes, 1);
-		if (debugFlag) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+		if (debugLevel > 1) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 	}
 }
-
 function deSelectAllGlobes() {
-	if (debugFlag) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+	if (debugLevel > 0) {console.log("deSelectAllGlobes()"); }
+	if (debugLevel > 1) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 	selectedGlobes = lastSelectedGlobes.slice(0);
-	if (debugFlag) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
+	if (debugLevel > 1) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 }
-
-
 function keyDown(evt) {
-	var validKey = 1;
+	var i, validKey = 1;
 	evt = evt || window.event;
+	if (debugLevel > 1) {console.log("keyDown(evt) evt.keyCode:", evt.keyCode); }
 	switch (evt.keyCode) {
-	case 16: selectAllGlobes(); shiftKeyDown = 1; break;                 // Shift
-	case 18:                                                             // Alt
-		altKeyDown = 1;
-		if (gammaAtmp === undefined || gammaBtmp === undefined || gammaStart === undefined) {
-			gammaAtmp = rArrays[0][2];
-			gammaBtmp = rArrays[1][2];
+	case 16: selectAllGlobes(); shiftKeyDown = 1; break;                     // Shift
+	case 18:                                                                 // Alt
+		if (!altKeyDown) {
+			gammaTmp = [];
+			xTmp = evt.offsetX || evt.layerX;
+			yTmp = evt.offsetY || evt.layerY;
+			for (i = 0; i < numberOfGlobes; i += 1) {
+				gammaTmp[i] = rArrays[i][2];
+			}
 			gammaStart = calcTan();
 		}
+		altKeyDown = 1;
 		break;
-	case 32: showGlobes[1] = showGlobes[1].toggle(); drawAll(); break;   // Space
-	case 48: loadPreset(0); drawAll(); break;                            // 0
-	case 49: loadPreset(1); drawAll(); break;                            // 1
-	case 50: loadPreset(2); drawAll(); break;                            // 2
-	case 51: loadPreset(3); drawAll(); break;                            // 3
-	case 52: loadPreset(4); drawAll(); break;                            // 4
-	case 53: loadPreset(5); drawAll(); break;                            // 5
-	case 54: loadPreset(6); drawAll(); break;                            // 6
-	case 55: loadPreset(7); drawAll(); break;                            // 7
-	case 56: loadPreset(8); drawAll(); break;                            // 8
-	case 57: loadPreset(9); drawAll(); break;                            // 9
-	case 66: showBorders = showBorders.toggle();  drawAll(); break;      // B
-	case 67: showCoastlines = showCoastlines.toggle(); drawAll(); break; // C
-	case 68: showGradient = showGradient.toggle(); drawAll(); break;     // D
-	case 71: showGraticule = showGraticule.toggle(); drawAll(); break;   // G
-	case 72: showHelp = showHelp.toggle(); drawAll(); break;             // H
-	case 73: showInfo = showInfo.toggle(); drawAll(); break;             // L
-	case 76: showLakes = showLakes.toggle(); drawAll(); break;           // L
-	case 77: momentumFlag = momentumFlag.toggle(); break;                // M
-	case 82: resetAll(); drawAll(); break;                               // R
-	case 83: switchColors(); drawAll(); break;                           // S
-	case 192:                                                            // `
-	case 220:                                                            // ^
-		debugFlag = debugFlag.toggle();
-		if (debugFlag) {logAll(); }
+	case 32:                                                                 // Space
+		for (i = 1; i < numberOfGlobes; i += 1) {
+			clearCanvas(canvasGlobe[i]);
+			showGlobes[i] = showGlobes[i].toggle();
+		}
+		if (!showGlobes[1]) {
+			lastSelectedGlobes = selectedGlobes.slice(0);
+			setAllArrayValues(selectedGlobes, 0);
+			setAllArrayValues(updateGlobes, 0);
+			selectedGlobes[0] = 1;
+			updateGlobes[0] = 1;
+		} else {
+			selectedGlobes = lastSelectedGlobes.slice(0);
+			drawAllGlobes();
+		}
+		break;
+	case 48: loadPreset(0); drawAllGlobes(); break;                           // 0
+	case 49: loadPreset(1); drawAllGlobes(); break;                           // 1
+	case 50: loadPreset(2); drawAllGlobes(); break;                           // 2
+	case 51: loadPreset(3); drawAllGlobes(); break;                           // 3
+	case 52: loadPreset(4); drawAllGlobes(); break;                           // 4
+	case 53: loadPreset(5); drawAllGlobes(); break;                           // 5
+	case 54: loadPreset(6); drawAllGlobes(); break;                           // 6
+	case 55: loadPreset(7); drawAllGlobes(); break;                           // 7
+	case 56: loadPreset(8); drawAllGlobes(); break;                           // 8
+	case 57: loadPreset(9); drawAllGlobes(); break;                           // 9
+	case 66: showBorders = showBorders.toggle(); drawAllGlobes(); break;      // B
+	case 67: showCoastlines = showCoastlines.toggle(); drawAllGlobes(); break;// C
+	case 68: showGradient = showGradient.toggle(); drawGradient(); break;    // D
+	case 71: showGraticule = showGraticule.toggle(); drawAllGlobes(); break;  // G
+	case 72: showHelp = showHelp.toggle(); drawHelp(); break;                 // H
+	case 73: showInfo = showInfo.toggle(); drawInfo(); break;                 // L
+	case 76: showLakes = showLakes.toggle(); drawAllGlobes(); break;          // L
+	case 77: momentumFlag = momentumFlag.toggle(); break;                     // M
+	case 82: resetAll(); break;                                 // R
+   // TODO Fix over time based repetitions like this:
+	case 83: if (!sKeyDown) {sKeyDown = 1; cycleColors(); } break;              // S
+	case 187: numberOfGlobes += 1; changeNumberOfGlobes(); break;
+	case 189: numberOfGlobes -= 1; changeNumberOfGlobes(); break;
+	case 192:                                                                 // `
+	case 220:                                                                 // ^
+		debugLevel = (debugLevel + 1) % 4;  // %4 for max debug level = 3
+		console.info("Debug Level: " + debugLevel);
 		break;
 	default: validKey = 0; break;
 	}
-	if (validKey && debugFlag) {
-		console.log("valid key down:", evt.keyCode);
-	}
+	if (validKey && debugLevel > 0) {console.log("valid key down:", evt.keyCode); }
 }
 
 function keyUp(evt) {
@@ -676,17 +811,14 @@ function keyUp(evt) {
 		altKeyDown = 0;
 		xRel = 0;
 		yRel = 0;
-		gammaAtmp = undefined;
-		gammaBtmp = undefined;
 		gammaStart = undefined;
+		gammaTmp = [];
 		break;
+	case 83: sKeyDown = 0; clearInterval(refreshColorsInterval); break;
 	default: validKey = 0; break;
 	}
-	if (validKey && debugFlag) {
-		console.log("valid key up:", evt.keyCode);
-	}
+	if (validKey && debugLevel > 0) {console.log("valid key up:", evt.keyCode); }
 }
-
 function zoom(delta) {
 	// visDeg visible angle in degrees
 	var i, visDeg = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
@@ -710,7 +842,7 @@ function zoom(delta) {
 		if (r >= diagonal / 2 && delta > 0) { clipAngle = visDeg;
 			} else if (r >= diagonal / 2 && delta < 0) {clipAngle = visDeg * 1.1;
 			} else {clipAngle = clipAngleMax; }
-		if (debugFlag) {console.log(delta, visDeg, clipAngle); }
+		if (debugLevel > 0) {console.log(delta, visDeg, clipAngle); }
 
 		if (r <= diagonal) {setGeometryLOD(0, 0, 0); }
 		if (r > diagonal && r <= diagonal * 4) {setGeometryLOD(1, 1, 0); }
@@ -735,25 +867,43 @@ function wheel(event) {
 	if (delta) {zoom(delta); }
 	if (event.preventDefault) {event.preventDefault(); event.returnValue = false; }
 }
+
 function addListeners() {
-	function lostFocus() {shiftKeyDown = 0; altKeyDown = 0; }
+	function resetModifiers() {
+		if (debugLevel > 0) {console.log("focus event"); }
+		shiftKeyDown = 0;
+		mouseDown = 0;
+		altKeyDown = 0;
+	}
 	element = document.getElementById("map");
 	element.addEventListener("mousemove", track, false);
 	element.addEventListener("mousedown", startTrack, false);
 	element.addEventListener("mouseup", stopTrack, false);
-	document.addEventListener("mousewheel", wheel, false);
-	document.addEventListener("keydown", keyDown, false);
-	document.addEventListener("keyup", keyUp, false);
-	window.onblur = lostFocus(); // reset key states on lost focus
-	window.onfocus = lostFocus(); // and regained focus
+	element.addEventListener("mousewheel", wheel, false);
+// should add event handlers to body
+	document.activeElement.addEventListener("keydown", keyDown, false);
+	document.activeElement.addEventListener("keyup", keyUp, false);
+	window.addEventListener("blur", resetModifiers, false); // reset key states on lost focus
+	window.addEventListener("focus", resetModifiers, false); // and regained focus
+}
+function main() {
+	numberOfGlobes = 2;
+	if (debugLevel > 0) {console.log("start main"); }
+	configGeoData();
+	setGeometryLOD();
+	prepareDocument();
+	addListeners();
+	initializeAll();
+	createGradientSphere();
+	if (numberOfGlobes === 2) {loadPreset(1); }
+	if (debugLevel > 2) {logAll(); }
+	if (debugLevel > 0) {console.log("end main"); }
 }
 
-configGeoData();
-setGeometryLOD();
-prepareDocument();
-addListeners();
-initializeAll();
-createGradientSphere();
-loadPreset(1);
-drawAll();
-if (debugFlag) {logAll(); }
+function resetAll() {
+	if (debugLevel > 0) {console.log("resetAll()"); }
+	d3.selectAll("div").remove();
+	main();
+}
+
+main();

@@ -2,6 +2,7 @@
 // Math
 Number.prototype.mod = function (n) {return ((this % n) + n) % n; };
 
+
 // sign function (+/-/0) of number http://stackoverflow.com/questions/7624920/number-sign-in-javascript
 Number.prototype.sign = function () {return this ? this < 0 ? -1 : 1 : 0; };
 
@@ -17,6 +18,13 @@ function setAllArrayValues(array, value) {
 	return array;
 }
 
+function initializeArray(length, value) {
+	var array = [];
+	array.length = length;
+	array = setAllArrayValues(array, value);
+	return array;
+}
+
 function sumOfArrayMembers(array) {
 	var i, total = 0;
 	for (i = 0; i < array.length; i += 1) {total = total + array[i]; }
@@ -26,14 +34,12 @@ function sumOfArrayMembers(array) {
 function shiftActiveArrayMember(array) {
 	var i, activeIndex, length = array.length;
 	activeIndex = array.indexOf(1);
-	if (debugFlag) {console.log("shift Array:", array, "Length:", length, "Active Index", activeIndex); }
 	if (activeIndex < 0) {activeIndex = 0; }
 	for (i = 0; i < length; i += 1) {
 		array[i] = 0;
 	}
 	if (activeIndex === length - 1) {array[0] = 1;
 		} else {array[activeIndex + 1] = 1; }
-	if (debugFlag) {console.log("shift Array:", array, "Length:", length, "Active Index", activeIndex); }
 }
 
 
