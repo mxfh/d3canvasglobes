@@ -41,7 +41,8 @@
 
 var debugLevel = 0; // 0 = off 1 = basic 2 = mouse 3 = all
 
-var	element, globe, land, coastlines, borders, lakes, graticule, graticuleIntervals, graticuleInterval,
+var	element, globe, land, coastlines, borders, bordersStates, lakes, countries, states,
+	graticule, graticuleIntervals, graticuleInterval,
 	fillColor, fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor, globeOutlineColor,
 	darkTone, brightTone,
 	width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
@@ -338,7 +339,7 @@ function calcTan() { // Calculate Angle from projection center
 function d3MousePosition() {
 	var last = geoCoordinatesAtMouseCursor;
 	// TODO: figure out a way to read out all active projections independently
-	geoCoordinatesAtMouseCursor = projections[0].invert(d3.mouse(this));
+	if (projections[0] !== undefined) {geoCoordinatesAtMouseCursor = projections[0].invert(d3.mouse(this)); }
 	if (last !== geoCoordinatesAtMouseCursor) {
 		drawInfo();
 	}
@@ -473,7 +474,7 @@ function prepareDocument() {
 // Layout helper Functions
 
 function clearCanvas(ctx) {
-	if (debugLevel > 0) {console.log("clearCanvas(context)", ctx.canvas.id, "w:", ctx.canvas.width, "h:", ctx.canvas.height, "context:", ctx); }
+	if (debugLevel > 1) {console.log("clearCanvas(context)", ctx.canvas.id, "w:", ctx.canvas.width, "h:", ctx.canvas.height, "context:", ctx); }
 	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
@@ -718,11 +719,15 @@ function loadGeometry() {
 		globe = {type: "Sphere"};
 		/** @namespace json.objects.land */
 		/** @namespace json.objects.coastline */
-		/** @namespace json.objects.landborders*/
+		/** @namespace json.objects.a0borders*/
+		/** @namespace json.objects.a1borders*/
 		/** @namespace json.objects.lakes */
 		land = topojson.object(json, json.objects.land);
 		coastlines = topojson.object(json, json.objects.coastline);
-		borders = topojson.object(json, json.objects.landborders);
+		borders = topojson.object(json, json.objects.a0borders);
+		bordersStates = topojson.object(json, json.objects.a1borders);
+		countries = topojson.object(json, json.objects.a0countrieslakes);
+		states = topojson.object(json, json.objects.a1countrieslakes);
 		lakes = topojson.object(json, json.objects.lakes);
 		graticule = createGraticule(graticuleInterval);
 		drawAll();
@@ -938,7 +943,7 @@ function keyDown(evt) {
 		break;
 	default: validKey = 0; break;
 	}
-	if (validKey && debugLevel > 0) {console.log("valid key down:", evt.keyCode); }
+	if (validKey && debugLevel > 1) {console.log("valid key down:", evt.keyCode); }
 }
 
 function keyUp(evt) {
