@@ -39,8 +39,10 @@
 
 "use strict";
 
-var element, globe, land, coastlines, borders, lakes, graticule, graticuleIntervals, graticuleInterval,
-	fillColor, fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor,
+var debugLevel = 0; // 0 = off 1 = basic 2 = mouse 3 = all
+
+var	element, globe, land, coastlines, borders, lakes, graticule, graticuleIntervals, graticuleInterval,
+	fillColor, fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor, globeOutlineColor,
 	darkTone, brightTone,
 	width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax,
 	canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne,
@@ -50,13 +52,15 @@ var element, globe, land, coastlines, borders, lakes, graticule, graticuleInterv
 	canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe,
 	context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe,
 	posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta,
-	coordsAtMouseCursor,	momentumFlag, mouseDown, shiftKeyDown, altKeyDown, sKeyDown,
+	geoCoordinatesAtMouseCursor,
+	lastClick, doubleClickLengthInMs = 666, maxFPS = 60, renderInterval = 1000 / maxFPS,
+	colorCycleInterval = 50,
+	momentumFlag, mouseDown, shiftKeyDown, altKeyDown, sKeyDown,
 	showGradient, showGradientZoombased, showGraticule,
 	showBorders, showLakes, showHelp, showInfo, showCoastlines,
 	updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber,
-	pi = Math.PI, radToDegFactor = 180 / pi, hueWheel, hueShift,
-	debugLevel = 0, // 0 = off 1 = basic 2 = mouse 3 = all
-	numberOfGlobes, kaleidoscope;
+	pi = Math.PI, radToDegFactor = 180 / pi, hueWheel, hueShift, kaleidoscope,
+	numberOfGlobes;
 
 // math
 Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -222,6 +226,7 @@ function initializeColors() {
 	fillColorA = "rgba(215, 25, 28, 0.5)";
 	fillColorB = "rgba(44, 123, 182, 0.5)";
 	fillColor = [fillColorA, fillColorB];
+	globeOutlineColor = "rgba(0, 0, 0, 0.2)"
 	// hueShift overrides predefined colors with computed hue at max angle
 	hueWheel = 1;
 	hueShift = 190;
@@ -331,10 +336,10 @@ function calcTan() { // Calculate Angle from projection center
 }
 
 function d3MousePosition() {
-	var last = coordsAtMouseCursor;
+	var last = geoCoordinatesAtMouseCursor;
 	// TODO: figure out a way to read out all active projections independently
-	coordsAtMouseCursor = projections[0].invert(d3.mouse(this));
-	if (last !== coordsAtMouseCursor) {
+	geoCoordinatesAtMouseCursor = projections[0].invert(d3.mouse(this));
+	if (last !== geoCoordinatesAtMouseCursor) {
 		drawInfo();
 	}
 	if (debugLevel > 1) {
@@ -359,9 +364,25 @@ function prepareDocument() {
 				drawAll();
 			}
 		}
+		function handleDoubleClick() {
+			if (debugLevel > 0) {console.log(geoCoordinatesAtMouseCursor); }
+			rotateToPosition();
+		}
+		function handleMouseClick() {
+			if (lastClick === undefined) {
+				lastClick = Date.now();
+			} else {
+				if (Date.now() - lastClick <  doubleClickLengthInMs) {
+					handleDoubleClick();
+				}
+				lastClick = Date.now();
+			}
+		}
+
 		element = document.getElementById("map");
 		element.addEventListener("mousemove", track, false);
 		element.addEventListener("mousedown", startTrack, false);
+		element.addEventListener("click", handleMouseClick, false);
 		element.addEventListener("mouseup", stopTrack, false);
 		element.addEventListener("mousewheel", wheel, false);
 // should add event handlers to body
@@ -481,6 +502,18 @@ function clearBackgroundRect(col, row, cols, rows, localContext) {
 	localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus, cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
 }
 
+function drawFilledPath(context, pathName) {
+	context.beginPath();
+	path(pathName);
+	context.fill();
+}
+
+function drawStrokedPath(context, pathName) {
+	context.beginPath();
+	path(pathName);
+	context.stroke();
+}
+
 // Draw to canvas
 function drawInfo() {
 	// TODO may be optimized by splitting into background and number display
@@ -494,20 +527,19 @@ function drawInfo() {
 			yA = getYtext(0),
 			yB = getYtext(1),
 			yC = getYtext(2),
-			yD = getYtext(3),
-			pos = coordsAtMouseCursor;
-			;
+			yD = getYtext(3);
+
 		//console.log(coordsAtMouseCursor);
-		if (pos !== undefined && !isNaN(pos[0]) && !isNaN(pos[1])) {
+		if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
 			backgroundRect(0, 0, 1, 3, fillColor[currentGlobeNumber], contextInfo);
 			contextInfo.fillStyle = textColor;
 			contextInfo.fillText("φ :", xZero, yA);
 			contextInfo.textAlign = "right";
-			contextInfo.fillText(formatPrecisionOne(pos[1]), xZeroRight, yA);
+			contextInfo.fillText(formatPrecisionOne(geoCoordinatesAtMouseCursor[1]), xZeroRight, yA);
 			contextInfo.textAlign = "left";
 			contextInfo.fillText("λ :", xZero, yB);
 			contextInfo.textAlign = "right";
-			contextInfo.fillText(formatPrecisionOne(pos[0]), xZeroRight, yB);
+			contextInfo.fillText(formatPrecisionOne(geoCoordinatesAtMouseCursor[0]), xZeroRight, yB);
 			contextInfo.textAlign = "left";
 		}
 		contextInfo.fillStyle = textColor;
@@ -574,65 +606,59 @@ function drawHelp() {
 		contextHelp.textAlign = "left";
 	}
 }
-function drawGlobe(rArray, fillColor, localContext) {
-	if (debugLevel > 1) {console.log("Globe# " + currentGlobeNumber + " drawGlobe(rArray, fillColor, localContext):", rArray, fillColor, localContext); }
+
+function drawGlobe(i) {
+	if (debugLevel > 1) {console.log("Globe# " + currentGlobeNumber + " drawGlobe(rArray, fillColor, localContext):", rArray, fillColor, contextGlobe[i]); }
 	// -λ, -φ, γ
 	var borderAlphaKnockOut = 0.8,
 		borderAlphaLine = 0.5,
 		coastlineAlpha = 0.9,
+		graticuleAlpha = 0.3,
 		mode = "destination-out",
-		modeDefault = "source-over",
-		localRotation = [-(rArray[0]), -(rArray[1]), rArray[2]];
+		modeDefault = "source-over";
 
 	// tweak projections here
-	projections[currentGlobeNumber] = (globalProjection.translate([posX, posY]).rotate(localRotation).clipAngle(clipAngle).scale(r));
-	path = d3.geo.path().projection(projections[currentGlobeNumber]).context(localContext);
+	clearCanvas(contextGlobe[i]);
+	projections[currentGlobeNumber] =
+		globalProjection
+			.translate([posX, posY])
+			.rotate([-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]])
+			.clipAngle(clipAngle).scale(r);
+	path = d3.geo.path().projection(projections[currentGlobeNumber]).context(contextGlobe[i]);
 	// Filled Style
 	if (!showCoastlines) {
-		localContext.fillStyle = fillColor;
-		localContext.beginPath();
-		path(land);
-		localContext.fill();
-		localContext.globalCompositeOperation = mode;
+		contextGlobe[i].fillStyle = fillColor[i];
+		drawFilledPath(contextGlobe[i], land);
+		contextGlobe[i].globalCompositeOperation = mode;
+
 		// subtract lakes and borders from continents
 		if (showLakes) {
-			localContext.fillStyle = fillColor.setAlpha(1);
-			localContext.beginPath();
-			path(lakes);
-			localContext.fill();
+			contextGlobe[i].fillStyle = fillColor[i].setAlpha(1);
+			drawFilledPath(contextGlobe[i], lakes);
 		}
 		if (showBorders) {
-			localContext.strokeStyle = fillColor.setAlpha(borderAlphaKnockOut);
-			localContext.beginPath();
-			path(borders);
-			localContext.stroke();
+			contextGlobe[i].strokeStyle = fillColor[i].setAlpha(borderAlphaKnockOut);
+			drawStrokedPath(contextGlobe[i], borders);
 		}
 	} else {
-		localContext.strokeStyle = fillColor.setAlpha(coastlineAlpha);
-		localContext.beginPath();
-		path(coastlines);
-		localContext.stroke();
+		contextGlobe[i].strokeStyle = fillColor[i].setAlpha(coastlineAlpha);
+		drawStrokedPath(contextGlobe[i], coastlines);
 		if (showLakes) {
-			localContext.beginPath();
-			path(lakes);
-			localContext.stroke();
+			drawStrokedPath(contextGlobe[i], lakes);
 		}
 		if (showBorders) {
-			localContext.strokeStyle = fillColor.setAlpha(borderAlphaLine);
-			localContext.beginPath();
-			path(borders);
-			localContext.stroke();
+			contextGlobe[i].strokeStyle = fillColor[i].setAlpha(borderAlphaLine);
+			drawStrokedPath(contextGlobe[i], borders);
 		}
 	}
 	// Graticule
 	if (showGraticule) {
-		localContext.globalCompositeOperation = modeDefault;
-		localContext.beginPath();
-		path(graticule);
-		localContext.strokeStyle = fillColor.setAlpha(0.25);
-		localContext.stroke();
+		contextGlobe[i].globalCompositeOperation = modeDefault;
+		// set graticule width with alpha:
+		contextGlobe[i].strokeStyle = fillColor[i].setAlpha(graticuleAlpha);
+		drawStrokedPath(contextGlobe[i], graticule);
 	}
-	localContext.globalCompositeOperation = modeDefault;
+	contextGlobe[i].globalCompositeOperation = modeDefault;
 }
 function drawGlobes() {
 	if (debugLevel > 0) {console.log("drawGlobes()", "updateGlobes[]", updateGlobes); }
@@ -640,36 +666,29 @@ function drawGlobes() {
 	for (i = 0; i < numberOfGlobes; i += 1) {
 		if (showGlobes[i] && (selectedGlobes[i] || updateGlobes[i])) {
 			currentGlobeNumber = i;
-			clearCanvas(contextGlobe[i]);
-			drawGlobe(rArrays[i], fillColor[i], contextGlobe[i]);
+			drawGlobe(i);
 			updateGlobes[i] = 0;
 		}
 	}
 }
 function drawGradient() {
-	if (debugLevel > 0) {
-		console.log("drawGradient()", "canvasGradient:", canvasGradient); }
-	if (debugLevel > 1) {
-		console.log("contextGradient:", contextGradient); }
+	if (debugLevel > 0) {console.log("drawGradient()", "canvasGradient:", canvasGradient); }
+	if (debugLevel > 1) {console.log("contextGradient:", contextGradient); }
 	clearCanvas(contextGradient);
 	// get projection from globe 0;
 	path = d3.geo.path().projection(projections[0]).context(contextGradient);
 	// draw gradient
 	if (showGradient && showGradientZoombased) {
 		createGradientSphere();
-		contextGradient.beginPath();
 		contextGradient.fillStyle = gradientSphere;
-		path(globe);
-		contextGradient.fill();
+		drawFilledPath(contextGradient, globe);
 		if (debugLevel > 0) {console.log("Gradient", "fillStyle:", contextGradient.fillStyle); }
 
 	}
 	// draw outline only
 	if (!showGradient || !showGradientZoombased) {
-		contextGradient.beginPath();
-		path(globe);
-		contextGradient.strokeStyle = "rgba(0, 0, 0, 0.2)";
-		contextGradient.stroke();
+		contextGradient.strokeStyle = globeOutlineColor;
+		drawStrokedPath(contextGradient, globe);
 		if (debugLevel > 0) {console.log("Outline", "strokeStyle:", contextGradient.strokeStyle); }
 	}
 }
@@ -783,6 +802,43 @@ function stopTrack() {
 		}, 1000 / 48);
 	}
 }
+
+
+function rotateToPosition() {
+	if (debugLevel > 0) {console.log("rotateToPosition"); }
+	if (!isNaN(geoCoordinatesAtMouseCursor[0]) || !isNaN(geoCoordinatesAtMouseCursor[1])) {
+		var refreshIntervalId, steps, cosFactor, stepLon, stepLat,
+			i = 0,
+			endPos = geoCoordinatesAtMouseCursor,
+			rStart = rArrays[currentGlobeNumber],
+			fullRotLon = Math.floor((rStart[0] + 180) / 360),
+			dLon = ((fullRotLon * 360 + endPos[0]) - rStart[0]),
+			dLat = (endPos[1] - rStart[1]);
+
+		// TODO Add Smoothing
+		if (dLon >= 180) {dLon = (dLon - 360); }
+		if (dLon <= -180) {dLon = (dLon + 360); }
+		steps = Math.floor(Math.sqrt(dLon * dLon + dLat * dLat)) * 2 + 6;
+		//console.log(steps);
+		stepLon = dLon / steps;
+		stepLat = dLat / steps;
+		cosFactor = ((pi * 2) / steps);
+		refreshIntervalId = setInterval(function () {
+			i += 1;
+			// cosine curve tweening
+			rArrays[currentGlobeNumber] = [
+				rArrays[currentGlobeNumber][0] + stepLon * (Math.cos(cosFactor * i) * -1 + 1),
+				rArrays[currentGlobeNumber][1] + stepLat * (Math.cos(cosFactor * i) * -1 + 1),
+				rArrays[currentGlobeNumber][2]
+			];
+			drawGlobe(currentGlobeNumber);
+			drawInfo();
+			if (i >= steps) {clearInterval(refreshIntervalId);}
+		}, renderInterval);
+	}
+}
+
+
 function switchColors() {
 	var tmp = fillColorA;
 	fillColorA = fillColorB;
@@ -790,13 +846,17 @@ function switchColors() {
 }
 var refreshColorsInterval;
 
+function shiftColors() {
+	hueShift = (hueShift - 360 / numberOfGlobes) % 360;
+	createColorWheel();
+	drawAllGlobes();
+	drawInfo();
+}
+
 function cycleColors() {
 	refreshColorsInterval = setInterval(function () {
-		hueShift = (hueShift - 360 / numberOfGlobes) % 360;
-		createColorWheel();
-		drawAllGlobes();
-		drawInfo();
-	}, 1000 / 10);
+		shiftColors();
+	}, colorCycleInterval);
 }
 
 function selectAllGlobes() {
@@ -899,7 +959,7 @@ function keyUp(evt) {
 		gammaStart = undefined;
 		gammaTmp = [];
 		break;
-	case 83: sKeyDown = 0; clearInterval(refreshColorsInterval); break;
+	case 83: sKeyDown = 0; clearInterval(refreshColorsInterval); shiftColors(); break;
 	default: validKey = 0; break;
 	}
 	if (validKey && debugLevel > 0) {console.log("valid key up:", evt.keyCode); }
