@@ -22,44 +22,47 @@
 // High priority
 // TODO: add cities+labels
 // TODO: Compare countries
+// TODO: Add sample data for feature layer
 // Medium
 // TODO: skip for-loop when active globe known, use only for moving multiples at once,
 // Low priority
 // TODO: dynamic canvas size and position by content extent
 // TODO: lock axis switches
 // TODO: show scale / distance circles / orientation
-// TODO: Remove Graticule from Geojson
 // TODO: Raster
 // TODO: Great circles / Loxodrome from Point A to B
 // TODO: Animations > Plate tectonics
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 function cgd3() {
+	//cgd3.x = cgd3 || {};
 	"use strict";
 
-	var debugLevel, element, globe, land, coastlines, borders, bordersStates, lakes, countries, states, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorA, fillColorB, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, mirrorColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasMirrorGlobe, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, context, contextBackground, contextMirrorGlobe, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, sKeyDown, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror;
+	var debugLevel, element, divElementId, featureJson, globe, land, coastlines, borders, bordersStates, lakes, countries, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
 
 	function setDefaults() {
+		firstRun = 1;
 		debugLevel = 0;
 		numberOfGlobes = 1;
 		showMirror = 0;
 		doubleClickLengthInMs = 666;
 		maxFPS = 60;
 		frameDuration = 1000 / maxFPS;
-		colorCycleInterval = 50;
+		colorCycleInterval = 1000 / (maxFPS / 2);
 		kaleidoscope = 0;
 		mouseDown = 0;
 		shiftKeyDown = 0;
 		altKeyDown = 0;
-		sKeyDown = 0;
+		colorCycleActive = 0;
 		gradientStyle = 1;
 		showGradientZoombased = 1;
 		showGraticule = 0;
 		showBorders = 0;
 		showCoastlines = 0;
+		showFeatureGlobe = 0;
 		showLakes = 0;
 		showHelp = 1;
 		showInfo = 1;
@@ -67,8 +70,8 @@ function cgd3() {
 		isAnimated = 0;
 		pi = Math.PI;
 		radToDegFactor = 180 / pi;
+		divElementId = "map";
 	}
-
 	function logAll() {
 		console.log("LOD:", geometryLOD,
 			"LODs[]:",
@@ -84,91 +87,88 @@ function cgd3() {
 			"canvas: ", canvas,
 			"context: ", context);
 	}
-
 	function configGeoData() {
-		topojsonPath = "topojson/";
+		if (!topojsonPath) {topojsonPath = "topojson/"; }
 		geometryAtLOD = [];
 		// 0 is globe view zoom level
 		geometryAtLOD[0] = topojsonPath + "ne_110m_world.json";
 		geometryAtLOD[1] = topojsonPath + "ne_50m_world.json";
 		geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
+		if (!featureData) {featureData = "topojson/ne_110m_world.json"; }
+		if (!featureJson) {featureJson = "a0countrieslakes"; }
 		geometryLOD = 0;
 		graticuleIntervals = [30, 10, 5, 2, 1];
 		graticuleInterval = graticuleIntervals[0];
 	}
-
 	function createGraticule(interval) { // create graticules as GeoJSON on the fly
-		var lonLat, i, iMax, j, jMax, k, kMax, l, lMax, pointsPerCircle = 360 / interval * 3, pointInterval,
+		var i, lonLat, pointsPerCircle, pointInterval,
 			graticuleGeoJson = {              // create object
 				type: "FeatureCollection",
 				"features": []                // declare array
 			};
 		if (interval === undefined) {interval = graticuleInterval; }
-		// ij - circles of latitude
+		pointsPerCircle = 360 / interval * 3;
 		pointInterval = 360 / pointsPerCircle;
-		iMax = 180 / interval;
-		jMax = pointsPerCircle;
-		// kl - meridians
-		kMax = 360 / interval;
-		lMax = pointsPerCircle / 2;
 
-		// Create circles of latitude
-		for (i = 0; i < iMax - 1; i += 1) {
+		function graticuleJsonTemplate(name, type, value) {
 			graticuleGeoJson.features.push({
 				"type": "Feature",
 				"properties": {
-					"name": ("Circle of Latitude at " + ((i + 1) * interval - 90)),
-					"latitude": ((i + 1) * interval - 90),
+					"name": name,
+					"position": value,
 					"class": "Graticule",
-					"type": "CircleOfLatitude"
+					"type": type
 				},
 				"geometry": {
 					"type": "LineString",
 					"coordinates": [ ]
 				}
 			});
-			for (j = 0; j <= jMax; j += 1) {
-				lonLat = [j * pointInterval - 180, (i + 1) * interval - 90];
-				graticuleGeoJson.features[i].geometry.coordinates.push(lonLat);
-			}
 		}
-		// Create Meridians
-		for (k = 0; k < kMax; k += 1) {
-			graticuleGeoJson.features.push({
-				"type": "Feature",
-				"properties": {
-					"name": ("Meridian at " + (k * interval - 180)),
-					"longitude": (k * interval - 180),
-					"class": "Graticule",
-					"type": "Meridian"
-				},
-				"geometry": {
-					"type": "LineString",
-					"coordinates": [ ]
-				}
-			});
-			for (l = 0; l <= lMax; l += 1) {
-				// less lines at poles
-				if (    // no 1°meridians up to 10°/20° based on interval
-					(l * pointInterval >= interval * 10 && l * pointInterval <= 180 - interval * 10) ||
-						// keep 5° up to 30° based on interval
-						(l * pointInterval >= interval * 6 && l * pointInterval <= 180 - interval * 6 && (k * interval) % 5 === 0) ||
-						// keep 10° up to 30° based on interval
-						(l * pointInterval >= interval * 3 && l * pointInterval <= 180 - interval * 3 && (k * interval) % 10 === 0) ||
-						// keep 30° up to 30° based on interval
-						(l * pointInterval >= interval && l * pointInterval <= 180 - interval && (k * interval) % 30 === 0) ||
-						// always keep 90°
-						(k * interval) % 90 === 0
-				) {
-					lonLat = [k * interval - 180, l * pointInterval - 90];
-					graticuleGeoJson.features[i + k].geometry.coordinates.push(lonLat);
+		function createCirclesOfLatitude() {
+			function createCircleOfLatitude() {
+				var j;
+				for (j = 0; j <= pointsPerCircle; j += 1) {
+					lonLat = [j * pointInterval - 180, (i + 1) * interval - 90];
+					graticuleGeoJson.features[i].geometry.coordinates.push(lonLat);
 				}
 			}
+			for (i = 0; i < 180 / interval - 1; i += 1) {
+				graticuleJsonTemplate("Circle of Latitude at " + ((i + 1) * interval - 90), "Circle of Latitude", ((i + 1) * interval - 90));
+				createCircleOfLatitude();
+			}
 		}
-
+		function createMeridians() {
+			var k, kMax = 360 / interval;
+			function createMeridian() {
+				var l;
+				for (l = 0; l <= pointsPerCircle / 2; l += 1) {
+					// less lines at poles
+					if ((l * pointInterval >= interval * 10 && l * pointInterval <= 180 - interval * 10) ||
+						// no 1°meridians up to 10°/20° based on interval
+							(l * pointInterval >= interval * 6 && l * pointInterval <= 180 - interval * 6 && (k * interval) % 5 === 0) ||
+							// keep 5° up to 30° based on interval
+							(l * pointInterval >= interval * 3 && l * pointInterval <= 180 - interval * 3 && (k * interval) % 10 === 0) ||
+							// keep 10° up to 30° based on interval
+							(l * pointInterval >= interval && l * pointInterval <= 180 - interval && (k * interval) % 30 === 0) ||
+							// keep 30° up to 30° based on interval
+							(k * interval) % 90 === 0
+							// always keep 90°
+							) {
+						lonLat = [k * interval - 180, l * pointInterval - 90];
+						graticuleGeoJson.features[i + k].geometry.coordinates.push(lonLat);
+					}
+				}
+			}
+			for (k = 0; k < kMax; k += 1) {
+				graticuleJsonTemplate("Meridian at " + (k * interval - 180), "Meridian", (k * interval - 180));
+				createMeridian();
+			}
+		}
+		createCirclesOfLatitude();
+		createMeridians();
 		return graticuleGeoJson;
 	}
-
 	function initializeLayout() {
 		if (debugLevel > 0) {console.log("initializeLayout()"); }
 		canvasPadding = minDim / 25;
@@ -188,51 +188,75 @@ function cgd3() {
 		origin = [canvasPadding, canvasPadding];
 		baselineOffset = 9;
 	}
-
 	function createColorWheel() {
-		if (debugLevel > 0) {console.log("createColorWheel()"); }
-		var i,
+		var i, hue, darker, lighter,
 			hueAngle = 360 / numberOfGlobes,
 			saturation = 70,
 			lightness = 48,
-		// = 1;
 			alpha = 1 / Math.sqrt(numberOfGlobes);
-		//alpha = 0.8 - Math.sqrt(numberOfGlobes)/10;
+		if (debugLevel > 0) {console.log("createColorWheel()"); }
+		function hslaString(hue, saturation, lightness, alpha) {
+			return "hsla(" + hue + ", " + saturation + "%, " + lightness + "%, " + alpha + ")";
+		}
 		if (hueShift === undefined) {hueShift = 0; }
+		darker = lightness / 2;
+		lighter = 100 - (100 - lightness) / 2;
 		for (i = 0; i < numberOfGlobes; i += 1) {
 			if (fillColor[i] !== undefined || hueWheel) {
-				fillColor[i] =
-					"hsla(" +
-						((hueShift + hueAngle * i) % 360) + ", " +
-						saturation + "%, " +
-						lightness + "%, " +
-						alpha + ")";
+				hue = (hueShift + hueAngle * i) % 360;
+				fillColor[i] = hslaString(hue, saturation, lightness, alpha);
+				fillColorA100[i] = hslaString(hue, saturation, lightness, 1);
+				fillColorA75[i] = hslaString(hue, saturation, lightness, 0.75);
+				fillColorA50[i] = hslaString(hue, saturation, lightness, 0.5);
+				fillColorA25[i] = hslaString(hue, saturation, lightness, 0.25);
+				fillColorDarker[i] = hslaString(hue, saturation, darker, alpha);
+				fillColorDarkerA100[i] = hslaString(hue, saturation, darker, 1);
+				fillColorDarkerA75[i] =  hslaString(hue, saturation, darker, 0.75);
+				fillColorDarkerA50[i] =  hslaString(hue, saturation, darker, 0.50);
+				fillColorDarkerA25[i] =  hslaString(hue, saturation, darker, 0.25);
+				fillColorLighter[i] = hslaString(hue, saturation, lighter, alpha);
+				fillColorLighterA100[i] = hslaString(hue, saturation, lighter, 1);
+				fillColorLighterA75[i] = hslaString(hue, saturation, lighter, 0.75);
+				fillColorLighterA50[i] = hslaString(hue, saturation, lighter, 0.5);
+				fillColorLighterA25[i] = hslaString(hue, saturation, lighter, 0.25);
 			}
 		}
 		if (debugLevel > 1) {console.log(" └─ hueAngle:", hueAngle, "hueStart:", hueShift, "fillColor[]:", fillColor); }
 	}
-
 	function initializeColors() {
 		if (debugLevel > 0) {console.log("initializeColors()"); }
-		//  ColorBrewer: RdYlBu
 		darkTone = "rgba(26, 17, 16, 1)";
 		brightTone = "hsla(240, 100%, 99%, 1)";
-		fillColorA = "rgba(215, 25, 28, 0.5)";
-		fillColorB = "rgba(44, 123, 182, 0.5)";
-		fillColor = [fillColorA, fillColorB];
+		// ColorBrewer: RdYlBu
+		// Rd "rgba(215, 25, 28, 0.5)";
+		// Bu = "rgba(44, 123, 182, 0.5)";
+		fillColor = [];
+		fillColorA25 = [];
+		fillColorA50 = [];
+		fillColorA75 = [];
+		fillColorA100 = [];
+		fillColorLighter = [];
+		fillColorLighterA100 = [];
+		fillColorLighterA75 = [];
+		fillColorLighterA50 = [];
+		fillColorLighterA25 = [];
+		fillColorDarker = [];
+		fillColorDarkerA100 = [];
+		fillColorDarkerA75 = [];
+		fillColorDarkerA50 = [];
+		fillColorDarkerA25 = [];
 		globeOutlineColor = "rgba(0, 0, 0, 0.2)";
 		//backgroundColor = darkTone;
 		backgroundCanvasColor = brightTone;
 		// hueShift overrides predefined colors with computed hue at max angle
-		hueWheel = 1;
 		hueShift = 10;
+		hueWheel = 1;
+		// create colors along hue circle
 		createColorWheel();
-		mirrorColor = fillColor[0].setAlpha(0.2);
 		textColor = darkTone;
 		gradientSphereColor = "rgba(80, 80, 100, 0.5)";
 
 	}
-
 	function initializeProjection() {
 		if (debugLevel > 0) {console.log("initializeProjection()"); }
 		if (debugLevel > 1) {console.log(" └─ rArrays[]:", rArrays); }
@@ -296,7 +320,6 @@ function cgd3() {
 		// init projections array
 		projections = [];
 	}
-
 	function initializeGlobes() {
 		var i;
 		if (debugLevel > 0) {console.log("initializeGlobes()"); }
@@ -311,7 +334,6 @@ function cgd3() {
 		if (debugLevel > 1) {console.log("Globes -- selected:", selectedGlobes, "show:", showGlobes, "update:", updateGlobes); }
 
 	}
-
 	function selectGlobe(i) {
 		//	if (!shiftKeyDown) {
 		if (debugLevel > 0) {console.log("selectGlobe()"); }
@@ -321,7 +343,6 @@ function cgd3() {
 		if (debugLevel > 1) {console.log("selectedGlobes", selectedGlobes); }
 		//	}
 	}
-
 	function selectAllGlobes() {
 		if (!shiftKeyDown) {
 			if (debugLevel > 0) {console.log("selectAllGlobes()"); }
@@ -331,14 +352,12 @@ function cgd3() {
 			if (debugLevel > 1) {console.log("select: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 		}
 	}
-
 	function deSelectAllGlobes() {
 		if (debugLevel > 0) {console.log("deSelectAllGlobes()"); }
 		if (debugLevel > 1) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 		selectedGlobes = lastSelectedGlobes.slice(0);
 		if (debugLevel > 1) {console.log("deselect: selectedGlobes, lastSelectedGlobes", selectedGlobes, lastSelectedGlobes); }
 	}
-
 	function handleGlobes() {
 		var i,
 			selected = selectedGlobes.indexOf(1),
@@ -377,7 +396,6 @@ function cgd3() {
 		lastNumberOfGlobes = numberOfGlobes;
 		if (debugLevel > 1) {console.log(" └─ rArrays[]:", rArrays); }
 	}
-
 	function initializeAll() {
 		initializeLayout();
 		initializeColors();
@@ -385,7 +403,6 @@ function cgd3() {
 		initializeGlobes();
 		handleGlobes();
 	}
-
 	function createGradientSphere() {
 		gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
 		gradientSphere.addColorStop(0, gradientSphereColor.setAlpha(0));
@@ -401,8 +418,6 @@ function cgd3() {
 		gradientSphere.addColorStop(1, gradientSphereColor.setAlpha(0.62));
 	}
 
-	//initialize Gradient
-
 	function calcTan() { // Calculate Angle from projection center
 		var gamma, deltaX, deltaY;
 		deltaX = x - posX;
@@ -411,95 +426,40 @@ function cgd3() {
 		return gamma;
 	}
 
-	// Handle geometry
-	function loadGeometry() {
-		if (debugLevel > 0) {console.log("loadGeometry()"); }
-		d3.json(topojsonData, function (error, json) {
-			if (debugLevel > 0) {console.log("d3.json"); }
-			if (error) {console.log(error); }
-			globe = {type: "Sphere"};
-			/** @namespace json.objects.land */
-			/** @namespace json.objects.coastline */
-			/** @namespace json.objects.a0borders*/
-			/** @namespace json.objects.a1borders*/
-			/** @namespace json.objects.lakes */
-			/** @namespace json.objects.a0countrieslakes */
-			/** @namespace json.objects.a1countrieslakes */
-			land = topojson.object(json, json.objects.land);
-			coastlines = topojson.object(json, json.objects.coastline);
-			borders = topojson.object(json, json.objects.a0borders);
-			bordersStates = topojson.object(json, json.objects.a1borders);
-			countries = topojson.object(json, json.objects.a0countrieslakes);
-			states = topojson.object(json, json.objects.a1countrieslakes);
-			lakes = topojson.object(json, json.objects.lakes);
-			graticule = createGraticule(graticuleInterval);
-			drawAll();
-		});
-	}
-
-	function setGeometryLOD(lod, forceNoGradientAtLOD, noMomentumAtLOD) {
-		// TODO decouple gradient switch from LOD
-		if (geometryLOD !== lod) {
-			if (lod === undefined) {lod = geometryLOD; }
-			geometryLOD = lod;
-			if (forceNoGradientAtLOD) {
-				showGradientZoombased = 0;
-			} else {showGradientZoombased = 1; }
-			if (noMomentumAtLOD) {
-				momentumFlag = 0;
-			} else {momentumFlag = 1; }
-			// fallback to lowest level
-			if (geometryAtLOD[geometryLOD] === undefined) {geometryLOD = 0; }
-			topojsonData = geometryAtLOD[geometryLOD];
-			loadGeometry();
-		}
-	}
-
 	// Layout helper Functions
-
 	function clearCanvas(ctx) {
 		if (debugLevel > 1) {console.log("clearCanvas(context)", ctx.canvas.id, "w:", ctx.canvas.width, "h:", ctx.canvas.height, "context:", ctx); }
 		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 	}
-
 	function clearAllCanvas() {
 		var i, n = canvas.length;
 		for (i = 0; i < n; i += 1) {clearCanvas(context[i]); }
 	}
-
 	function newLine(newLines) {
 		if (lineNumber === undefined) {lineNumber = 0; }
 		if (newLines === undefined) {newLines = 1; }
 		lineNumber = lineNumber + newLines;
 		return lineNumber - newLines;
 	}
-
 	function getX(column) {return origin[0] + (colWidth + gutter) * column; }
-
 	function getXalignRight(column) { return getX(column) + colWidth; }
-
 	function getY(row) {return origin[1] + rowHeight * row; }
-
 	function getYtext(row) {return getY(row) + baselineOffset; }
-
 	function backgroundRect(col, row, cols, rows, fillColor, localContext) {
 		localContext.beginPath();
 		localContext.rect(getX(col) - padding, getY(row) - padding, cols * colWidth + (cols - 1) * gutter + padding * 2, rows * rowHeight + padding * 2);
 		localContext.fillStyle = fillColor;
 		localContext.fill();
 	}
-
 	function clearBackgroundRect(col, row, cols, rows, localContext) {
 		var paddingPlus = padding + 1;
 		localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus, cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
 	}
-
 	function drawFilledPath(context, pathName) {
 		context.beginPath();
 		path(pathName);
 		context.fill();
 	}
-
 	function drawStrokedPath(context, pathName) {
 		context.beginPath();
 		path(pathName);
@@ -521,7 +481,7 @@ function cgd3() {
 				yC = getYtext(2),
 				yD = getYtext(3);
 			//console.log(coordsAtMouseCursor);
-			if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
+			if (geoCoordinatesAtMouseCursor && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
 				backgroundRect(0, 0, 1, 3, fillColor[currentGlobeNumber], contextInfo);
 				contextInfo.fillStyle = textColor;
 				contextInfo.fillText("φ", xZero, yA);
@@ -535,13 +495,13 @@ function cgd3() {
 			}
 			contextInfo.fillStyle = textColor;
 			if (debugLevel > 0) {
-				if (x !== undefined) {
+				if (typeof x === "number") {
 					contextInfo.fillText("x", xZero, yC);
 					contextInfo.textAlign = "right";
 					contextInfo.fillText(x, xZeroRight, yC);
 					contextInfo.textAlign = "left";
 				}
-				if (y !== undefined) {
+				if (typeof y === "number") {
 					contextInfo.fillText("y", xZero, yD);
 					contextInfo.textAlign = "right";
 					contextInfo.fillText(y, xZeroRight, yD);
@@ -569,7 +529,6 @@ function cgd3() {
 			}
 		}
 	}
-
 	function drawHelp() {
 		// TODO may be moved to html
 		clearCanvas(contextHelp);
@@ -609,125 +568,155 @@ function cgd3() {
 			contextHelp.textAlign = "left";
 		}
 	}
-
 	function drawGlobe(i) {
 		if (debugLevel > 0) {console.log("drawGlobe(i):", i); }
 		// -λ, -φ, γ
-		var ctx, rot, prj, fc,
-			borderAlphaKnockOut = 0.8,
-			borderAlphaLine = 0.5,
-			coastlineAlpha = 0.9,
-			graticuleAlpha = 0.3,
-			mode = "destination-out",
+		var ctx, rot, prj,
+			//mode = "destination-out",
+			mode = "xor",
 			modeDefault = "source-over";
-		if (i === -1) {
-			// mirrored mode
-			borderAlphaLine = 0.25;
-			coastlineAlpha = 0.45;
-			graticuleAlpha = 0.15;
-			ctx = contextMirrorGlobe;
-			rot = [-(rArrays[0][0]) + 180, (rArrays[0][1]), -rArrays[0][2]];
-			fc = mirrorColor;
-		} else {
-			// standard
-			ctx = contextGlobe[i];
-			rot = [-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]];
-			fc = fillColor[i];
+		function drawLand(fLand, fLakes, fBorders, sLand, sBorders) {
+			if (!showCoastlines) {
+				ctx.fillStyle = fLand;
+				drawFilledPath(ctx, land);
+				ctx.globalCompositeOperation = mode;
+				// subtract lakes and borders from continents
+				if (showLakes) {
+					ctx.fillStyle = fLakes;
+					drawFilledPath(ctx, lakes);
+				}
+				if (showBorders) {
+					ctx.strokeStyle = fBorders;
+					drawStrokedPath(ctx, borders);
+				}
+				ctx.globalCompositeOperation = modeDefault;
+			} else {
+				ctx.strokeStyle = sLand;
+				drawStrokedPath(ctx, coastlines);
+				if (showLakes) {
+					drawStrokedPath(ctx, lakes);
+				}
+				if (showBorders) {
+					ctx.strokeStyle = sBorders;
+					drawStrokedPath(ctx, borders);
+				}
+			}
 		}
+		function drawGraticule(strokeStyle) {
+			if (showGraticule) {
+				ctx.strokeStyle = strokeStyle; // set graticule width with alpha:
+				drawStrokedPath(ctx, graticule);
+			}
+		}
+		function drawGlobeBackside() {
+			var rotMirror, prjMirror;
+			// flip canvas
+			ctx.translate(width, 0);
+			ctx.scale(-1, 1);
+			// mirrored mode
+			// set center to antipode inverse rotation
+			rotMirror = [-(rArrays[i][0]) + 180, (rArrays[i][1]), -rArrays[i][2]];
+			prjMirror = globalProjection
+				.translate([posX, posY])
+				.rotate(rotMirror)
+				.clipAngle(clipAngle).scale(r);
+			path = d3.geo.path().projection(prjMirror).context(ctx);
+			drawLand(fillColorDarkerA75[i], fillColorA100[i], fillColorA75[i], fillColorA50[i], fillColorA25[i]);
+			drawGraticule(fillColorA25[i]);
+			// flip back to normal
+			ctx.translate(width, 0);
+			ctx.scale(-1, 1);
 
+		}
+		ctx = contextGlobe[i];
+		clearCanvas(ctx);
+		if (showMirror) {
+			drawGlobeBackside();
+		}
+		rot = [-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]];
 		// tweak projections here
 		prj = globalProjection
 			.translate([posX, posY])
 			.rotate(rot)
 			.clipAngle(clipAngle).scale(r);
 
-		clearCanvas(ctx);
-
+		//ctx.globalCompositeOperation = modeDefault;
 		path = d3.geo.path().projection(prj).context(ctx);
 		// Filled Style
-		if (!showCoastlines) {
-			ctx.fillStyle = fc;
-			drawFilledPath(ctx, land);
-			ctx.globalCompositeOperation = mode;
-
-			// subtract lakes and borders from continents
-			if (showLakes) {
-				ctx.fillStyle = fc.setAlpha(1);
-				drawFilledPath(ctx, lakes);
-			}
-			if (showBorders) {
-				ctx.strokeStyle = fc.setAlpha(borderAlphaKnockOut);
-				drawStrokedPath(ctx, borders);
-			}
-		} else {
-			ctx.strokeStyle = fc.setAlpha(coastlineAlpha);
-			drawStrokedPath(ctx, coastlines);
-			if (showLakes) {
-				drawStrokedPath(ctx, lakes);
-			}
-			if (showBorders) {
-				ctx.strokeStyle = fc.setAlpha(borderAlphaLine);
-				drawStrokedPath(ctx, borders);
-			}
-		}
-		// Graticule
-		if (showGraticule) {
-			ctx.globalCompositeOperation = modeDefault;
-			// set graticule width with alpha:
-			ctx.strokeStyle = fc.setAlpha(graticuleAlpha);
-			drawStrokedPath(ctx, graticule);
-		}
-		ctx.globalCompositeOperation = modeDefault;
+		drawLand(fillColor[i], fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
+		drawGraticule(fillColorDarkerA25[i]);
 	}
-
+	function drawFeatureGlobe() {
+		if (showFeatureGlobe) {
+			if (debugLevel > 0) {console.log("drawFeatureGlobe()"); }
+			// -λ, -φ, γ
+			var ctx, rot, prj;
+			ctx = contextFeatureGlobe;
+			rot = [-(rArrays[0][0]), (-rArrays[0][1]), rArrays[0][2]];
+			// tweak projections here
+			prj = globalProjection
+				.translate([posX, posY])
+				.rotate(rot)
+				.clipAngle(clipAngle).scale(r);
+			clearCanvas(ctx);
+			path = d3.geo.path().projection(prj).context(ctx);
+			// Filled Style
+			ctx.fillStyle = fillColorDarkerA50[0];
+			drawStrokedPath(ctx, features);
+		}
+	}
 	function drawGlobes() {
 		if (debugLevel > 0) {console.log("drawGlobes()", "updateGlobes[]", updateGlobes); }
 		if (debugLevel > 1) {console.log("updateGlobes[]", updateGlobes); }
 		var i;
-		if (showMirror) {drawGlobe(-1); }
 		for (i = 0; i < numberOfGlobes; i += 1) {
 			if (showGlobes[i] && (selectedGlobes[i] || updateGlobes[i])) {
 				currentGlobeNumber = i;
 				drawGlobe(i);
+				drawFeatureGlobe();
 				updateGlobes[i] = 0;
 			}
 		}
 	}
-
 	function drawGradient() {
+		var ctx, rot, prj;
+		ctx = contextGradient;
+		rot = [-(rArrays[0][0]), (-rArrays[0][1]), rArrays[0][2]];
+		// tweak projections here
+		prj = globalProjection
+			.translate([posX, posY])
+			.rotate(rot)
+			.clipAngle(clipAngle).scale(r);
 		if (debugLevel > 0) {console.log("drawGradient()"); }
-		if (debugLevel > 1) {console.log("contextGradient:", contextGradient); }
-		clearCanvas(contextGradient);
+		if (debugLevel > 1) {console.log("contextGradient:", ctx); }
+		clearCanvas(ctx);
 		if (gradientStyle !== 0) {
-			path = d3.geo.path().projection(globalProjection).context(contextGradient);
+			path = d3.geo.path().projection(prj).context(ctx);
 			// draw gradient
 			if (gradientStyle === 1 && showGradientZoombased) {
 				createGradientSphere();
-				contextGradient.fillStyle = gradientSphere;
-				drawFilledPath(contextGradient, globe);
-				if (debugLevel > 1) {console.log(" └─ Gradient", "fillStyle:", contextGradient.fillStyle); }
+				ctx.fillStyle = gradientSphere;
+				drawFilledPath(ctx, globe);
+				if (debugLevel > 1) {console.log(" └─ Gradient", "fillStyle:", ctx.fillStyle); }
 
 			}
 			// draw outline only
 			if (gradientStyle === 2 || !showGradientZoombased) {
-				contextGradient.strokeStyle = globeOutlineColor;
-				drawStrokedPath(contextGradient, globe);
-				if (debugLevel > 1) {console.log(" └─ Outline", "strokeStyle:", contextGradient.strokeStyle); }
+				ctx.strokeStyle = globeOutlineColor;
+				drawStrokedPath(ctx, globe);
+				if (debugLevel > 1) {console.log(" └─ Outline", "strokeStyle:", ctx.strokeStyle); }
 			}
 		}
 	}
-
 	function setAllGlobesToUpdate() {
 		setAllArrayValues(updateGlobes, 1);
 		if (debugLevel > 0) {console.log("setAllGlobesToUpdate()", "updateGlobes[]", updateGlobes); }
 	}
-
 	function drawAllGlobes() {
 		if (debugLevel > 0) {console.log("drawAllGlobes()"); }
 		setAllGlobesToUpdate();
 		drawGlobes();
 	}
-
 	function drawAll() {
 		if (debugLevel > 0) {console.log("drawAll()"); }
 		contextBackground.fillStyle = backgroundCanvasColor;
@@ -737,23 +726,78 @@ function cgd3() {
 		drawInfo();
 		drawHelp();
 	}
+	function loadGeometry() {
+		if (debugLevel > 0) {console.log("loadGeometry()"); }
+		d3.json(topojsonData, function (error, json) {
+			if (debugLevel > 0) {console.log("d3.json"); }
+			if (error) {console.log(error); }
+			globe = {type: "Sphere"};
+			/** @namespace json.objects.land */
+			/** @namespace json.objects.coastline */
+			/** @namespace json.objects.a0borders*/
+			/** @namespace json.objects.a1borders*/
+			/** @namespace json.objects.lakes */
+			/** @namespace json.objects.a0countrieslakes */
+			/** @namespace json.objects.a1countrieslakes */
+			if (!error) {
+				if (geometryLOD === 0) {land = topojson.object(json, json.objects.land); }
+				//if (geometryLOD === 0) {land = topojson.object(json, json.objects.a0countrieslakes); }
+				if (geometryLOD === 1) {land = topojson.object(json, json.objects.a0countrieslakes); }
+				if (geometryLOD === 2) {land = topojson.object(json, json.objects.a1countrieslakes); }
+				// TODO add lat lon bounding boxes to geojson objects
+				// preferably with terraformer.js or own function
+				//var landbounds = eachGeometry(land, calculateBounds);
+				//console.log(landbounds);
+				coastlines = topojson.object(json, json.objects.coastline);
+				borders = topojson.object(json, json.objects.a0borders);
+				bordersStates = topojson.object(json, json.objects.a1borders);
+				countries = topojson.object(json, json.objects.a0countrieslakes);
+				states = topojson.object(json, json.objects.a1countrieslakes);
+				lakes = topojson.object(json, json.objects.lakes);
+			}
+			graticule = createGraticule(graticuleInterval);
+			if (firstRun) {drawAll(); firstRun = 0; }
+		});
+		d3.json(featureData, function (error, json) {
+// TODO 2nd json-file should be appended to first loop
+			// console.log(featureData);
+			if (debugLevel > 0) {console.log("d3.json - features"); }
+			if (error) {console.log(error); }
+			if (!error) {features = topojson.object(json, json.objects[featureJson]); }
+		});
+	}
+	function setGeometryLOD(lod, forceNoGradientAtLOD, noMomentumAtLOD) {
+		// TODO decouple gradient switch from LOD
+		if (geometryLOD !== lod) {
+			if (lod === undefined) {lod = geometryLOD; }
+			geometryLOD = lod;
+			if (forceNoGradientAtLOD) {
+				showGradientZoombased = 0;
+			} else {showGradientZoombased = 1; }
+			if (noMomentumAtLOD) {
+				momentumFlag = 0;
+			} else {momentumFlag = 1; }
+			// fallback to lowest level
+			if (geometryAtLOD[geometryLOD] === undefined) {geometryLOD = 0; }
+			topojsonData = geometryAtLOD[geometryLOD];
+			loadGeometry();
+		}
+	}
 
 	// interaction functions
-
 	function d3MousePosition() {
 		var last = geoCoordinatesAtMouseCursor;
 		// TODO: figure out a way to read out all active projections independently
-		if (globalProjection !== undefined) {
-			geoCoordinatesAtMouseCursor = globalProjection.invert(d3.mouse(this));
+		if (!globalProjection) {
+			geoCoordinatesAtMouseCursor = globalProjection.invert(d3.mouse(element));
 			if (debugLevel > 1) {
-				console.log("d3MousePosition()", currentGlobeNumber, projections[currentGlobeNumber].invert(d3.mouse(this)));
+				console.log("d3MousePosition()", currentGlobeNumber, projections[currentGlobeNumber].invert(d3.mouse(element)));
 			}
 		}
 		if (last !== geoCoordinatesAtMouseCursor) {
 			drawInfo();
 		}
 	}
-
 	function rotate() {
 		var i;
 		for (i = 0; i < numberOfGlobes; i += 1) {
@@ -764,7 +808,6 @@ function cgd3() {
 			}
 		}
 	}
-
 	function track(evt) {
 		if (debugLevel > 2) {console.log("track(evt)", "evt:", evt); }
 		x = evt.offsetX || evt.layerX;
@@ -773,49 +816,48 @@ function cgd3() {
 			xRel = x - xTmp;
 			yRel = y - yTmp;
 			rotate();
-			drawGlobes();
+			if (!isAnimated) {drawGlobes(); }
 		}
-		drawInfo();
+		if (!isAnimated) {drawInfo(); }
 	}
-
 	function startTrack(evt) {
 		xTmp = evt.offsetX || evt.layerX;
 		yTmp = evt.offsetY || evt.layerY;
 		mouseDown = 1;
 	}
-
 	function stopTrack() {
 		var refreshIntervalId, linearSlowdown = r / 250, factorSlowdown = 0.99;
 		altKeyDown = 0;
 		mouseDown = 0;
+		// mouse drag
 		if (momentumFlag) {
 			refreshIntervalId = setInterval(function () {
 				yRel = (yRel) * factorSlowdown - yRel.sign() * linearSlowdown;
 				xRel = (xRel) * factorSlowdown - xRel.sign() * linearSlowdown;
 				rotate();
-				drawGlobes();
-				drawInfo();
+				if (!isAnimated) {
+					drawGlobes();
+					drawInfo();
+				}
 				if ((Math.abs(xRel) < 1 && Math.abs(yRel) < 1) || !momentumFlag) {clearInterval(refreshIntervalId); }
 			}, frameDuration);
 		}
 	}
 	cgd3.rotateToPosition = function (lonLat) {
-	//function rotateToPosition(lonLat) {
-		var endPosition = [];
-		if (lonLat === undefined) {
+		var endPosition = [], refreshIntervalId, steps, cosFactor, stepLon, stepLat,
+			i = 0,
+			rStart = rArrays[currentGlobeNumber],
+			fullRotLon = Math.floor((rStart[0] + 180) / 360), dLon, dLat;
+
+		if (!lonLat) {
 			endPosition = geoCoordinatesAtMouseCursor;
 		} else {
 			endPosition = lonLat;
 		}
+		dLon = ((fullRotLon * 360 + endPosition[0]) - rStart[0]);
+		dLat = (endPosition[1] - rStart[1]);
 		if (debugLevel > 0) {console.log("rotateToPosition"); }
 		if (!isNaN(endPosition[0]) || !isNaN(endPosition[1])) {
-			var refreshIntervalId, steps, cosFactor, stepLon, stepLat,
-				i = 0,
-				rStart = rArrays[currentGlobeNumber],
-				fullRotLon = Math.floor((rStart[0] + 180) / 360),
-				dLon = ((fullRotLon * 360 + endPosition[0]) - rStart[0]),
-				dLat = (endPosition[1] - rStart[1]);
-
 			// TODO Add Smoothing
 			if (dLon >= 180) {dLon = (dLon - 360); }
 			if (dLon <= -180) {dLon = (dLon + 360); }
@@ -832,31 +874,37 @@ function cgd3() {
 					rArrays[currentGlobeNumber][1] + stepLat * (Math.cos(cosFactor * i) * -1 + 1),
 					rArrays[currentGlobeNumber][2]
 				];
-				drawGlobe(currentGlobeNumber);
-				if (showMirror) {drawGlobe(-1); }
-				drawInfo();
+				if (!isAnimated) {
+					drawGlobe(currentGlobeNumber);
+					drawInfo();
+				}
 				if (i >= steps) {clearInterval(refreshIntervalId); }
 			}, frameDuration);
 		}
-	}
-
+	};
 	function shiftColors() {
 		hueShift = (hueShift - 360 / numberOfGlobes) % 360;
 		createColorWheel();
 		drawAllGlobes();
 		drawInfo();
 	}
-
 	function cycleColors() {
+		// shift by one, cycle when hold;
+		var hueShiftTmp = hueShift;
+		shiftColors();
 		refreshColorsInterval = setInterval(function () {
 			shiftColors();
+			if (!colorCycleActive) {
+				clearInterval(refreshColorsInterval);
+				hueShift = hueShiftTmp;
+				shiftColors();
+			}
 		}, colorCycleInterval);
 	}
-
 	function animateGlobes() {
 		var a;
 		a = setInterval(function () {
-			var i, offset = 0.5;
+			var i, offset = 100 / r;
 			for (i = 0; i < numberOfGlobes; i += 1) {
 				rArrays[i] = [rArrays[i][0] - offset, rArrays[i][1], rArrays[i][2]];
 			}
@@ -865,33 +913,125 @@ function cgd3() {
 			if (!isAnimated) {clearInterval(a); }
 		}, frameDuration);
 	}
+
 	cgd3.toggleHelp = function () {
 		showHelp = showHelp.toggle();
 		drawHelp();
 	};
-
 	cgd3.toggleInfo = function () {
 		showInfo = showInfo.toggle();
 		drawInfo();
 	};
-
 	cgd3.toggleMirror = function () {
 		if (numberOfGlobes === 1 || showMirror) {
 			showMirror = showMirror.toggle();
-			if (showMirror) {drawGlobe(-1); } else {clearCanvas(contextMirrorGlobe); }
 		}
 	};
-
 	cgd3.toggleAnimation = function () {
 		isAnimated = isAnimated.toggle();
 		animateGlobes();
 	};
-
 	cgd3.toggleGraticule = function () {
 		showGraticule = showGraticule.toggle();
 		drawAllGlobes();
 	};
+	cgd3.toggleFeatures = function () {
+		showFeatureGlobe = showFeatureGlobe.toggle();
+		clearCanvas(contextFeatureGlobe);
+		drawAllGlobes();
+	};
+	cgd3.setNaturalEarthPath = function (pathTo) {
+		topojsonPath = pathTo;
+		configGeoData();
+		setGeometryLOD();
+	};
+	cgd3.setFeatureData = function (pathToDataFile, feature) {
+		featureData = pathToDataFile;
+		featureJson = feature;
+		configGeoData();
+		setGeometryLOD();
+	};
 
+	function zoom(delta) {
+		// visDeg visible angle in degrees
+		var i, visDeg = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
+
+		function setGraticuleInterval(interval) {
+			if (graticuleInterval !== interval) {
+				graticuleInterval = interval;
+				loadGeometry();
+			}
+		}
+
+		if (isNaN(visDeg)) {visDeg = 90; }
+		if (r >= zoomMin && r <= zoomMax) {
+			r = r + delta * r / 20;
+			// clip view
+			if (visDeg / 2 >= graticuleIntervals[0]) {setGraticuleInterval(graticuleIntervals[0]); }
+			if (visDeg / 2 < graticuleIntervals[0] && visDeg / 2 >= graticuleIntervals[1]) {setGraticuleInterval(graticuleIntervals[1]); }
+			if (visDeg / 2 < graticuleIntervals[1] && visDeg / 2 >= graticuleIntervals[2]) {setGraticuleInterval(graticuleIntervals[2]); }
+			if (visDeg / 2 < graticuleIntervals[2] && visDeg / 2 >= graticuleIntervals[3]) {setGraticuleInterval(graticuleIntervals[3]); }
+			if (visDeg / 2 < graticuleIntervals[3] && visDeg / 2 >= graticuleIntervals[4]) {setGraticuleInterval(graticuleIntervals[4]); }
+
+
+			if (r >= diagonal / 2 && delta > 0) {
+				clipAngle = visDeg;
+			} else if (r >= diagonal / 2 && delta < 0) {
+				clipAngle = visDeg * 1.1;
+			} else {clipAngle = clipAngleMax; }
+			if (debugLevel > 0) {console.log(delta, visDeg, clipAngle); }
+
+			if (r <= diagonal) {setGeometryLOD(0, 0, 0); }
+			if (r > diagonal && r <= diagonal * 4) {setGeometryLOD(1, 1, 0); }
+			if (r > diagonal * 4) {setGeometryLOD(2, 1, 1); }
+
+			// clamp zoom
+			if (r < zoomMin) {r = zoomMin; }
+			if (r > zoomMax) {r = zoomMax; }
+			// clear gradient overlay on zoom resize
+			for (i = 0; i < numberOfGlobes; i += 1) {
+				updateGlobes[i] = 1;
+			}
+			drawGlobes();
+			drawGradient();
+		}
+	}
+	function wheel(event) {
+		if (!event) {event = window.event; } // IE
+		if (event.wheelDelta) {
+			delta = event.wheelDelta / 120;
+		} else if (event.detail) {delta = -event.detail / 3; }
+		if (delta) {zoom(delta); }
+		if (event.preventDefault) {
+			event.preventDefault();
+			event.returnValue = false;
+		}
+	}
+	function setNumberOfGlobes() {
+		if (numberOfGlobes < 2 || undefined) {
+			numberOfGlobes = 1;
+			console.log("Rendering " + numberOfGlobes + " Globe");
+		} else {
+			console.info("Rendering " + numberOfGlobes + " Globes");
+		}
+		if (debugLevel > 0) {console.info("start globe change"); }
+		d3.selectAll("div").remove();
+		prepareDocument();
+		createColorWheel();
+		handleGlobes();
+		setGeometryLOD();
+	}
+	function loadPreset(p) {
+		if (debugLevel > 0) {console.log("loadPreset(" + p + ")"); }
+		var i;
+		numberOfGlobes = presets[p].length;
+		setNumberOfGlobes();
+		for (i = 0; i < numberOfGlobes; i += 1) {
+			if (presets[p][i] !== undefined) {
+				rArrays[i] = presets[p][i];
+			} else { rArrays[i] = [0, 0, 0]; }
+		}
+	}
 	function keyDown(evt) {
 		function hideAllButFirstGlobe() {
 			var i;
@@ -992,6 +1132,10 @@ function cgd3() {
 			gradientStyle = (gradientStyle + 1) % 3;
 			drawGradient();
 			break;
+		case 70:                                   // F
+			cgd3.toggleFeatures();
+			drawGradient();
+			break;
 		case 71:                                   // G
 			cgd3.toggleGraticule();
 			break;
@@ -1016,8 +1160,8 @@ function cgd3() {
 			break;
 		// TODO Fix other time based repetitions like this:
 		case 83:                                   // S
-			if (!sKeyDown) {
-				sKeyDown = 1;
+			if (!colorCycleActive) {
+				colorCycleActive = 1;
 				cycleColors();
 			}
 			break;
@@ -1043,7 +1187,6 @@ function cgd3() {
 		}
 		if (validKey && debugLevel > 1) {console.log("valid key down:", evt.keyCode); }
 	}
-
 	function keyUp(evt) {
 		var validKey = 1;
 		evt = evt || window.event;
@@ -1063,72 +1206,14 @@ function cgd3() {
 			gammaTmp = [];
 			break;
 		case 83:                                   // S
-			sKeyDown = 0;
-			clearInterval(refreshColorsInterval);
-			shiftColors();
+			colorCycleActive = 0;
+			//clearInterval(refreshColorsInterval);
 			break;
 		default:
 			validKey = 0;
 			break;
 		}
 		if (validKey && debugLevel > 0) {console.log("valid key up:", evt.keyCode); }
-	}
-
-	function zoom(delta) {
-		// visDeg visible angle in degrees
-		var i, visDeg = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
-
-		function setGraticuleInterval(interval) {
-			if (graticuleInterval !== interval) {
-				graticuleInterval = interval;
-				loadGeometry();
-			}
-		}
-
-		if (isNaN(visDeg)) {visDeg = 90; }
-		if (r >= zoomMin && r <= zoomMax) {
-			r = r + delta * r / 20;
-			// clip view
-			if (visDeg / 2 >= graticuleIntervals[0]) {setGraticuleInterval(graticuleIntervals[0]); }
-			if (visDeg / 2 < graticuleIntervals[0] && visDeg / 2 >= graticuleIntervals[1]) {setGraticuleInterval(graticuleIntervals[1]); }
-			if (visDeg / 2 < graticuleIntervals[1] && visDeg / 2 >= graticuleIntervals[2]) {setGraticuleInterval(graticuleIntervals[2]); }
-			if (visDeg / 2 < graticuleIntervals[2] && visDeg / 2 >= graticuleIntervals[3]) {setGraticuleInterval(graticuleIntervals[3]); }
-			if (visDeg / 2 < graticuleIntervals[3] && visDeg / 2 >= graticuleIntervals[4]) {setGraticuleInterval(graticuleIntervals[4]); }
-
-
-			if (r >= diagonal / 2 && delta > 0) {
-				clipAngle = visDeg;
-			} else if (r >= diagonal / 2 && delta < 0) {
-				clipAngle = visDeg * 1.1;
-			} else {clipAngle = clipAngleMax; }
-			if (debugLevel > 0) {console.log(delta, visDeg, clipAngle); }
-
-			if (r <= diagonal) {setGeometryLOD(0, 0, 0); }
-			if (r > diagonal && r <= diagonal * 4) {setGeometryLOD(1, 1, 0); }
-			if (r > diagonal * 4) {setGeometryLOD(2, 1, 1); }
-
-			// clamp zoom
-			if (r < zoomMin) {r = zoomMin; }
-			if (r > zoomMax) {r = zoomMax; }
-			// clear gradient overlay on zoom resize
-			for (i = 0; i < numberOfGlobes; i += 1) {
-				updateGlobes[i] = 1;
-			}
-			drawGlobes();
-			drawGradient();
-		}
-	}
-
-	function wheel(event) {
-		if (!event) {event = window.event; } // IE
-		if (event.wheelDelta) {
-			delta = event.wheelDelta / 120;
-		} else if (event.detail) {delta = -event.detail / 3; }
-		if (delta) {zoom(delta); }
-		if (event.preventDefault) {
-			event.preventDefault();
-			event.returnValue = false;
-		}
 	}
 
 	function prepareDocument() {
@@ -1166,7 +1251,7 @@ function cgd3() {
 				}
 			}
 
-			element = document.getElementById("map");
+			element = document.getElementById(divElementId);
 			element.addEventListener("mousemove", track, false);
 			element.addEventListener("mousedown", startTrack, false);
 			element.addEventListener("click", handleMouseClick, false);
@@ -1177,8 +1262,7 @@ function cgd3() {
 			window.addEventListener("resize", resizeDocument, false);
 			window.addEventListener("blur", resetModifiers, false); // reset key states on lost focus
 			window.addEventListener("focus", resetModifiers, false); // and regained focus
-			d3.select("#map").on("mousemove.log", d3MousePosition);
-
+			d3.select("#" + divElementId).on("mousemove.log", d3MousePosition);
 		}
 
 		function getWindowDimensions() {
@@ -1211,7 +1295,7 @@ function cgd3() {
 		}
 		if (debugLevel > 0) {console.log("prepareDocument()"); }
 		getWindowDimensions();
-		d3.select("body").append("div").attr("id", "map");
+		d3.select("body").append("div").attr("id", divElementId);
 		canvas = [];
 		canvasGlobe = [];
 		context = [];
@@ -1226,19 +1310,17 @@ function cgd3() {
 		canvasBackground = canvas[zID - 1];
 		contextBackground = context[zID - 1];
 
-		canvasID[zID] = "canvas_mirrorglobe";
-		appendCanvas();
-		canvasMirrorGlobe = canvas[zID - 1];
-		contextMirrorGlobe = context[zID - 1];
-		contextMirrorGlobe.scale(-1, 1);
-		contextMirrorGlobe.translate(-width, 0);
-
 		for (i = 0; i < numberOfGlobes; i += 1) {
 			canvasID[zID] = "canvas_globe_" + i;
 			appendCanvas();
 			canvasGlobe[i] = canvas[zID - 1];
 			contextGlobe[i] = context[zID - 1];
 		}
+
+		canvasID[zID] = "canvas_featureGlobe";
+		appendCanvas();
+		canvasFeatureGlobe = canvas[zID - 1];
+		contextFeatureGlobe = context[zID - 1];
 
 		canvasID[zID] = "canvas_gradient";
 		appendCanvas();
@@ -1263,34 +1345,6 @@ function cgd3() {
 			console.log(" └─ canvasInfo:", canvasInfo);
 		}
 		addListeners();
-	}
-
-	function setNumberOfGlobes() {
-		if (numberOfGlobes < 2 || undefined) {
-			numberOfGlobes = 1;
-			console.log("Rendering " + numberOfGlobes + " Globe");
-		} else {
-			if (showMirror) {cgd3.toggleMirror(); }
-			console.info("Rendering " + numberOfGlobes + " Globes");
-		}
-		if (debugLevel > 0) {console.info("start globe change"); }
-		d3.selectAll("div").remove();
-		prepareDocument();
-		createColorWheel();
-		handleGlobes();
-		setGeometryLOD();
-	}
-
-	function loadPreset(p) {
-		if (debugLevel > 0) {console.log("loadPreset(" + p + ")"); }
-		var i;
-		numberOfGlobes = presets[p].length;
-		setNumberOfGlobes();
-		for (i = 0; i < numberOfGlobes; i += 1) {
-			if (presets[p][i] !== undefined) {
-				rArrays[i] = presets[p][i];
-			} else { rArrays[i] = [0, 0, 0]; }
-		}
 	}
 
 	function main() {

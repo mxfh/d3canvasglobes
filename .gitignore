@@ -22,3 +22,4 @@ local.properties
 dev.html
 
 topojson/features
+tests/
