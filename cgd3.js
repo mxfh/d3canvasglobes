@@ -481,7 +481,7 @@ function cgd3() {
 				yC = getYtext(2),
 				yD = getYtext(3);
 			//console.log(coordsAtMouseCursor);
-			if (geoCoordinatesAtMouseCursor && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
+			if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
 				backgroundRect(0, 0, 1, 3, fillColor[currentGlobeNumber], contextInfo);
 				contextInfo.fillStyle = textColor;
 				contextInfo.fillText("φ", xZero, yA);
@@ -788,7 +788,7 @@ function cgd3() {
 	function d3MousePosition() {
 		var last = geoCoordinatesAtMouseCursor;
 		// TODO: figure out a way to read out all active projections independently
-		if (!globalProjection) {
+		if (globalProjection !== undefined) {
 			geoCoordinatesAtMouseCursor = globalProjection.invert(d3.mouse(element));
 			if (debugLevel > 1) {
 				console.log("d3MousePosition()", currentGlobeNumber, projections[currentGlobeNumber].invert(d3.mouse(element)));
@@ -857,8 +857,7 @@ function cgd3() {
 		dLon = ((fullRotLon * 360 + endPosition[0]) - rStart[0]);
 		dLat = (endPosition[1] - rStart[1]);
 		if (debugLevel > 0) {console.log("rotateToPosition"); }
-		if (!isNaN(endPosition[0]) || !isNaN(endPosition[1])) {
-			// TODO Add Smoothing
+		if (!isNaN(endPosition[0]) && !isNaN(endPosition[1])) {
 			if (dLon >= 180) {dLon = (dLon - 360); }
 			if (dLon <= -180) {dLon = (dLon + 360); }
 			steps = Math.floor(Math.sqrt(dLon * dLon + dLat * dLat)) * 2 + 6;
