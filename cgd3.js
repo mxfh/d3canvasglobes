@@ -34,11 +34,10 @@
 // TODO: Animations > Plate tectonics
 // TODO: Sun Terminator
 // TODO: Tissot's-Indicatrix (Pseudo/real)
-function cgd3() {
-	//cgd3.x = cgd3 || {};
-	"use strict";
 
-	var debugLevel, element, divElementId, featureJson, globe, land, coastlines, borders, bordersStates, lakes, countries, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
+cgd3 = function () {
+	var cgd3 = {version: "0.1"},
+		debugLevel, resetFlag, mapProjection, element, divElementId, featureJson, globe, land, coastlines, borders, bordersStates, lakes, countries, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -72,22 +71,8 @@ function cgd3() {
 		radToDegFactor = 180 / pi;
 		divElementId = "map";
 	}
-	function logAll() {
-		console.log("LOD:", geometryLOD,
-			"LODs[]:",
-			geometryAtLOD,
-			"globe:", globe,
-			"land:", land,
-			"coastlines:", coastlines,
-			borders, lakes, graticule,
-			"tmp:", gammaTmp, gammaStart,
-			"currentRotation:", currentRotation,
-			"projections:", projections,
-			"path: ", path,
-			"canvas: ", canvas,
-			"context: ", context);
-	}
-	function configGeoData() {
+
+	function setGeoDataDefaults() {
 		if (!topojsonPath) {topojsonPath = "topojson/"; }
 		geometryAtLOD = [];
 		// 0 is globe view zoom level
@@ -178,7 +163,7 @@ function cgd3() {
 		x = posX;
 		y = posY;
 		rInit = minDim / 2 - globePadding;
-		r = rInit;
+		if (!r || resetFlag) {r = rInit; }
 		formatPrecisionOne = d3.format(".1f");
 		colWidth = 43;
 		rowHeight = 12;
@@ -188,6 +173,16 @@ function cgd3() {
 		origin = [canvasPadding, canvasPadding];
 		baselineOffset = 9;
 	}
+	cgd3.setR = function (factor,absolute) {
+		if (!absolute) {r = r * factor; }
+		// if absolute is 1 set directly
+		if (absolute) {r = factor; }
+	};
+
+	cgd3.getR = function () {
+		return r;
+	};
+
 	function createColorWheel() {
 		var i, hue, darker, lighter,
 			hueAngle = 360 / numberOfGlobes,
@@ -246,7 +241,7 @@ function cgd3() {
 		fillColorDarkerA50 = [];
 		fillColorDarkerA25 = [];
 		globeOutlineColor = "rgba(0, 0, 0, 0.2)";
-		//backgroundColor = darkTone;
+		backgroundColor = darkTone;
 		backgroundCanvasColor = brightTone;
 		// hueShift overrides predefined colors with computed hue at max angle
 		hueShift = 10;
@@ -257,14 +252,18 @@ function cgd3() {
 		gradientSphereColor = "rgba(80, 80, 100, 0.5)";
 
 	}
+	cgd3.setClipAngle = function (angle, angleMax) {
+		clipAngle = angle;
+		if (!angleMax) {clipAngleMax = angle; } else {clipAngleMax = angleMax; }
+	};
 	function initializeProjection() {
 		if (debugLevel > 0) {console.log("initializeProjection()"); }
 		if (debugLevel > 1) {console.log(" └─ rArrays[]:", rArrays); }
 
 		rArrays = [];
 		rArrayDefault = [0, 0, 0];
-		clipAngleMax = 88;
-		clipAngle = clipAngleMax;
+		if (!clipAngleMax || resetFlag) {clipAngleMax = 88; }
+		if (!clipAngle || resetFlag) {clipAngle = clipAngleMax; }
 		zoomMin = 10;
 		zoomMax = 10000;
 		delta = 0;
@@ -316,10 +315,116 @@ function cgd3() {
 		xTmp = 0;
 		yTmp = 0;
 		// set global projection mode here:
-		globalProjection = d3.geo.orthographic();
+		if (!mapProjection) { mapProjection = "orthographic"}
+		globalProjection = d3.geo[mapProjection]();
 		// init projections array
 		projections = [];
 	}
+
+	cgd3.setMapProjection = function (projectionNameString) {
+		mapProjection = projectionNameString;
+		globalProjection = d3.geo[mapProjection]();
+	};
+
+	cgd3.cycleMapProjection = function (increment) {
+		var availableMapProjections = [
+				//built in
+				"mercator",
+				"orthographic",
+				"albers",
+				//"albersUsa",
+				"azimuthalEqualArea",
+				"azimuthalEquidistant",
+				"equirectangular",
+				"gnomonic",
+				"stereographic",
+				//
+				"aitoff",
+				"armadillo",
+				"august",
+				"baker",
+				"berghaus",
+				"boggs",
+				"bonne",
+				"bonneHeart",
+				"bromley",
+				"collignon",
+				"conic-conformal",
+				"conic-equidistant",
+				"craig",
+				"craster",
+				"cylindrical-equal-area",
+				"eckert1",
+				"eckert2",
+				"eckert3",
+				"eckert4",
+				"eckert5",
+				"eckert6",
+				"eisenlohr",
+				"end",
+				"fahey",
+				"gringorten",
+				"guyou",
+				"hammer",
+				"hammer-retroazimuthal",
+				"hatano",
+				"healpix",
+				"hill",
+				"homolosine",
+				"interrupt",
+				"kavrayskiy7",
+				"lagrange",
+				"larrivee",
+				"laskowski",
+				"littrow",
+				"loximuthal",
+				"miller",
+				"modified-stereographic",
+				"mollweide",
+				"mt-flat-polar-parabolic",
+				"mt-flat-polar-quartic",
+				"mt-flat-polar-sinusoidal",
+				"natural-earth",
+				"nell-hammer",
+				"parallel1",
+				"parallel2",
+				"peirce-quincuncial",
+				"polyconic",
+				"projection",
+				"README",
+				"rectangular-polyconic",
+				"robinson",
+				"satellite",
+				"sinu-mollweide",
+				"sinusoidal",
+				"start",
+				"times",
+				"two-point-azimuthal",
+				"two-point-equidistant",
+				"van-der-grinten",
+				"van-der-grinten2",
+				"van-der-grinten3",
+				"van-der-grinten4",
+				"wagner4",
+				"wagner6",
+				"wagner7",
+				"wiechel",
+				"winkel3"
+			],
+			i = availableMapProjections.indexOf(mapProjection),
+			l = availableMapProjections.length;
+		if (i >= 0) {
+			if (!increment) {increment = 1; }
+			mapProjection = availableMapProjections[(i + increment) % l];
+			globalProjection = d3.geo[mapProjection]();
+			// TODO Load size presets (clipAngle etc...) based on projection
+			console.info("current Map projection: " + mapProjection);
+			clearCanvas(contextBackground);
+			gradientStyle = 2;
+			drawMap();
+		}
+	};
+
 	function initializeGlobes() {
 		var i;
 		if (debugLevel > 0) {console.log("initializeGlobes()"); }
@@ -332,8 +437,8 @@ function cgd3() {
 		// select first globe
 		selectedGlobes[0] = 1;
 		if (debugLevel > 1) {console.log("Globes -- selected:", selectedGlobes, "show:", showGlobes, "update:", updateGlobes); }
-
 	}
+
 	function selectGlobe(i) {
 		//	if (!shiftKeyDown) {
 		if (debugLevel > 0) {console.log("selectGlobe()"); }
@@ -553,6 +658,7 @@ function cgd3() {
 			contextHelp.fillText("Add/Remove additional globes:  [=]/[-]", xRight, getYtext(newLine()));
 			contextHelp.fillText("New globes are added with rotation:  [K]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Show transparent globe  [T]", xRight, getYtext(newLine(2)));
+			contextHelp.fillText("Switch between projections (experimental) [O][P]", xRight, getYtext(newLine()));
 
 			contextHelp.fillText("Show/hide Graticule:  [G]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Show/hide land Borders:  [B]", xRight, getYtext(newLine()));
@@ -568,6 +674,9 @@ function cgd3() {
 			contextHelp.textAlign = "left";
 		}
 	}
+//  getting function definitions out of loops!!!
+
+
 	function drawGlobe(i) {
 		if (debugLevel > 0) {console.log("drawGlobe(i):", i); }
 		// -λ, -φ, γ
@@ -633,6 +742,33 @@ function cgd3() {
 		if (showMirror) {
 			drawGlobeBackside();
 		}
+		// TODO: Valentines day edition, there should be a nice place to put this code
+		// Since clipping drove me nuts this map is rendered in two parts each shifted by +/-90 degrees and clipped by 90 degrees
+		if (mapProjection === "bonneHeart") {
+
+			var xOffset = r * 1.321, // TODO: factor is guesswork so far should be derived from projection
+				offset = 90;
+			clipAngle = 89.99999999;
+			function bonneHeartHalf(sign) {
+				rot = [-(rArrays[i][0]) - sign * 90, 0, rArrays[i][2]];
+				// tweak projections here
+
+				prj = d3.geo.bonneHeart()
+					.translate([posX + sign * xOffset, posY])
+					.rotate(rot)
+					.parallel(sign * offset)
+					.clipAngle(clipAngle).scale(r);
+
+				path = d3.geo.path().projection(prj).context(ctx);
+				// Filled Style
+				var heartColor = "rgba(255, 192, 203,1)";
+				drawLand(heartColor, fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
+				drawGraticule("rgba(255, 192, 203,0.25)") ;
+			}
+			bonneHeartHalf(1);
+			bonneHeartHalf(-1);
+		}
+		else {
 		rot = [-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]];
 		// tweak projections here
 		prj = globalProjection
@@ -645,6 +781,7 @@ function cgd3() {
 		// Filled Style
 		drawLand(fillColor[i], fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
 		drawGraticule(fillColorDarkerA25[i]);
+		}
 	}
 	function drawFeatureGlobe() {
 		if (showFeatureGlobe) {
@@ -681,15 +818,30 @@ function cgd3() {
 	function drawGradient() {
 		var ctx, rot, prj;
 		ctx = contextGradient;
-		rot = [-(rArrays[0][0]), (-rArrays[0][1]), rArrays[0][2]];
-		// tweak projections here
-		prj = globalProjection
-			.translate([posX, posY])
-			.rotate(rot)
-			.clipAngle(clipAngle).scale(r);
 		if (debugLevel > 0) {console.log("drawGradient()"); }
 		if (debugLevel > 1) {console.log("contextGradient:", ctx); }
 		clearCanvas(ctx);
+		if (mapProjection === "bonneHeart") {
+			ctx = contextBackground;
+			clearCanvas(ctx);
+			var offset = 1.321;
+			ctx.fillStyle = "rgba(224,17,95,1)";
+			prj = d3.geo.bonneHeart().parallel(-90).translate([posX -r * offset, posY]).clipAngle(90).scale(r);
+			path = d3.geo.path().projection(prj).context(ctx);
+			drawFilledPath(ctx, globe);
+			prj = d3.geo.bonneHeart().parallel(90).translate([posX + r * offset, posY]).clipAngle(90).scale(r);
+			path = d3.geo.path().projection(prj).context(ctx);
+			drawFilledPath(ctx, globe);
+			if (debugLevel > 1) {console.log(" └─ Heart", "fillStyle:", ctx.fillColor); }
+		}
+		else {
+		rot = [-(rArrays[0][0]), (-rArrays[0][1]), rArrays[0][2]];
+		// tweak projections here
+		prj = globalProjection
+			//.translate([posX, posY])
+			.rotate(rot)
+			.clipAngle(clipAngle).scale(r);
+
 		if (gradientStyle !== 0) {
 			path = d3.geo.path().projection(prj).context(ctx);
 			// draw gradient
@@ -707,6 +859,7 @@ function cgd3() {
 				if (debugLevel > 1) {console.log(" └─ Outline", "strokeStyle:", ctx.strokeStyle); }
 			}
 		}
+		}
 	}
 	function setAllGlobesToUpdate() {
 		setAllArrayValues(updateGlobes, 1);
@@ -717,12 +870,19 @@ function cgd3() {
 		setAllGlobesToUpdate();
 		drawGlobes();
 	}
+
+	function drawMap() {
+		if (debugLevel > 0) {console.log("drawMap()"); }
+		drawAllGlobes();
+		drawFeatureGlobe();
+		drawGradient();
+	}
+
 	function drawAll() {
 		if (debugLevel > 0) {console.log("drawAll()"); }
 		contextBackground.fillStyle = backgroundCanvasColor;
 		contextBackground.fillRect(0, 0, width, height);
-		drawAllGlobes();
-		drawGradient();
+		drawMap();
 		drawInfo();
 		drawHelp();
 	}
@@ -900,10 +1060,12 @@ function cgd3() {
 			}
 		}, colorCycleInterval);
 	}
-	function animateGlobes() {
+	function animateGlobes(offsetFactor) {
 		var a;
 		a = setInterval(function () {
-			var i, offset = 100 / r;
+			var i, offset;
+			if (!offsetFactor) {offsetFactor = 100; }
+			offset = offsetFactor / r;
 			for (i = 0; i < numberOfGlobes; i += 1) {
 				rArrays[i] = [rArrays[i][0] - offset, rArrays[i][1], rArrays[i][2]];
 			}
@@ -913,27 +1075,34 @@ function cgd3() {
 		}, frameDuration);
 	}
 
-	cgd3.toggleHelp = function () {
-		showHelp = showHelp.toggle();
+	cgd3.toggleHelp = function (boolean) {
+		if (!boolean) {showHelp = showHelp.toggle(); } else {showHelp = boolean; }
 		drawHelp();
 	};
-	cgd3.toggleInfo = function () {
-		showInfo = showInfo.toggle();
+	cgd3.toggleInfo = function (boolean) {
+		if (!boolean) {showInfo = showInfo.toggle(); } else {showInfo = boolean; }
 		drawInfo();
 	};
 	cgd3.toggleMirror = function () {
-		if (numberOfGlobes === 1 || showMirror) {
-			showMirror = showMirror.toggle();
-		}
+		showMirror = showMirror.toggle();
 	};
-	cgd3.toggleAnimation = function () {
-		isAnimated = isAnimated.toggle();
-		animateGlobes();
+	cgd3.toggleAnimation = function (boolean, speed) {
+		if (!boolean) {isAnimated = isAnimated.toggle(); } else {isAnimated = boolean; }
+		if (!speed) {speed === undefined; }
+		animateGlobes(speed);
 	};
 	cgd3.toggleGraticule = function () {
 		showGraticule = showGraticule.toggle();
 		drawAllGlobes();
 	};
+
+	cgd3.setGradientStyle = function (style) {
+		if (!style) {gradientStyle = (gradientStyle + 1) % 3;
+			} else gradientStyle = style;
+		drawAllGlobes();
+	};
+
+
 	cgd3.toggleFeatures = function () {
 		showFeatureGlobe = showFeatureGlobe.toggle();
 		clearCanvas(contextFeatureGlobe);
@@ -941,14 +1110,17 @@ function cgd3() {
 	};
 	cgd3.setNaturalEarthPath = function (pathTo) {
 		topojsonPath = pathTo;
-		configGeoData();
-		setGeometryLOD();
+		setGeoDataDefaults();
 	};
+	cgd3.setAllDefaults = function () {
+		setDefaults();
+		setGeoDataDefaults();
+	};
+
 	cgd3.setFeatureData = function (pathToDataFile, feature) {
 		featureData = pathToDataFile;
 		featureJson = feature;
-		configGeoData();
-		setGeometryLOD();
+		setGeoDataDefaults();
 	};
 
 	function zoom(delta) {
@@ -991,8 +1163,7 @@ function cgd3() {
 			for (i = 0; i < numberOfGlobes; i += 1) {
 				updateGlobes[i] = 1;
 			}
-			drawGlobes();
-			drawGradient();
+			drawMap();
 		}
 	}
 	function wheel(event) {
@@ -1019,6 +1190,7 @@ function cgd3() {
 		createColorWheel();
 		handleGlobes();
 		setGeometryLOD();
+		drawMap();
 	}
 	function loadPreset(p) {
 		if (debugLevel > 0) {console.log("loadPreset(" + p + ")"); }
@@ -1128,7 +1300,7 @@ function cgd3() {
 			drawAllGlobes();
 			break;
 		case 68:                                   // D
-			gradientStyle = (gradientStyle + 1) % 3;
+			cgd3.setGradientStyle();
 			drawGradient();
 			break;
 		case 70:                                   // F
@@ -1153,6 +1325,12 @@ function cgd3() {
 			break;
 		case 77:                                   // M
 			momentumFlag = momentumFlag.toggle();
+			break;
+		case 79:                                   // O
+			cgd3.cycleMapProjection(-1);
+			break;
+		case 80:                                   // P
+			cgd3.cycleMapProjection();
 			break;
 		case 82:                                   // R
 			cgd3.resetAll();
@@ -1346,24 +1524,31 @@ function cgd3() {
 		addListeners();
 	}
 
-	function main() {
+	cgd3.main = function () {
 		if (debugLevel > 0) {console.log("--- main()"); }
 		setDefaults();
-		configGeoData();
+		setGeoDataDefaults();
 		setGeometryLOD();
 		prepareDocument();
 		initializeAll();
 		// preset overrides number of globes
 		// {loadPreset(4); }
-		if (debugLevel > 2) {logAll(); }
 		if (debugLevel > 0) {console.log("--- end main"); }
-	}
+	};
+
+	cgd3.firstDraw = function () {
+		setGeometryLOD();
+		prepareDocument();
+		initializeAll();
+	};
+
 
 	cgd3.resetAll = function () {
 		if (debugLevel > 0) {console.log("resetAll()"); }
+		resetFlag = 1;
 		d3.selectAll("div").remove();
-		main();
+		cgd3.main();
+		resetFlag = 0;
 	};
-
-	main();
-}
+	return cgd3;
+}();
