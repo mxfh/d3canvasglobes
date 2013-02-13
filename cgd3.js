@@ -587,7 +587,7 @@ cgd3 = function () {
 				yD = getYtext(3);
 			//console.log(coordsAtMouseCursor);
 			if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
-				backgroundRect(0, 0, 1, 3, fillColor[currentGlobeNumber], contextInfo);
+				backgroundRect(0, 0, 1, 2, fillColor[currentGlobeNumber], contextInfo);
 				contextInfo.fillStyle = textColor;
 				contextInfo.fillText("φ", xZero, yA);
 				contextInfo.textAlign = "right";
@@ -621,7 +621,8 @@ cgd3 = function () {
 				col = i + 1;
 				xLeft = getX(col);
 				xRight = getXalignRight(col);
-				backgroundRect(col, 0, 1, 3, fillColor[i], contextInfo);
+				if (gamma !== 0) {backgroundRect(col, 0, 1, 3, fillColor[i], contextInfo);
+				} else {backgroundRect(col, 0, 1, 2, fillColor[i], contextInfo); }
 				contextInfo.fillStyle = textColor;
 				contextInfo.fillText("φ₀", xLeft, yA);
 				contextInfo.fillText("λ₀", xLeft, yB);
@@ -808,7 +809,7 @@ cgd3 = function () {
 		var i;
 		for (i = 0; i < numberOfGlobes; i += 1) {
 			if (showGlobes[i] && (selectedGlobes[i] || updateGlobes[i])) {
-				currentGlobeNumber = i;
+				currentGlobeNumber = selectedGlobes.indexOf(1);
 				drawGlobe(i);
 				drawFeatureGlobe();
 				updateGlobes[i] = 0;
@@ -1064,7 +1065,7 @@ cgd3 = function () {
 		var a;
 		a = setInterval(function () {
 			var i, offset;
-			if (!offsetFactor) {offsetFactor = 100; }
+			if (!offsetFactor) {offsetFactor = 30; }
 			offset = offsetFactor / r;
 			for (i = 0; i < numberOfGlobes; i += 1) {
 				rArrays[i] = [rArrays[i][0] - offset, rArrays[i][1], rArrays[i][2]];
@@ -1085,6 +1086,7 @@ cgd3 = function () {
 	};
 	cgd3.toggleMirror = function () {
 		showMirror = showMirror.toggle();
+		drawAllGlobes();
 	};
 	cgd3.toggleAnimation = function (boolean, speed) {
 		if (!boolean) {isAnimated = isAnimated.toggle(); } else {isAnimated = boolean; }
