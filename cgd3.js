@@ -421,7 +421,7 @@ cgd3 = function () {
 			console.info("current Map projection: " + mapProjection);
 			clearCanvas(contextBackground);
 			gradientStyle = 2;
-			drawMap();
+			drawAll();
 		}
 	};
 
@@ -556,9 +556,15 @@ cgd3 = function () {
 		localContext.fillStyle = fillColor;
 		localContext.fill();
 	}
-	function clearBackgroundRect(col, row, cols, rows, localContext) {
+	function clearBackgroundRect(col, row, cols, rows, localContext, noPadding) {
 		var paddingPlus = padding + 1;
-		localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus, cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
+		if (noPadding) {
+			localContext.clearRect(getX(col), getY(row), cols * colWidth + (cols - 1) * gutter,
+				rows * rowHeight);
+		} else {
+			localContext.clearRect(getX(col) - paddingPlus, getY(row) - paddingPlus,
+				cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
+		}
 	}
 	function drawFilledPath(context, pathName) {
 		context.beginPath();
@@ -586,6 +592,11 @@ cgd3 = function () {
 				yC = getYtext(2),
 				yD = getYtext(3),
 				yE = getYtext(4);
+			// projection
+			if (forceRedraw) {
+				clearBackgroundRect(0, 4, 4, 1, contextInfo, 1);
+				contextInfo.fillText("Map Projection: " + mapProjection, xZero, yE);
+			}
 			// Draw lon/lat mouse position
 			if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
 				clearBackgroundRect(0, 0, 1, 2, contextInfo);
@@ -603,17 +614,17 @@ cgd3 = function () {
 			// Draw X/Y mouse position in debug mode
 			contextInfo.fillStyle = textColor;
 			if (debugLevel > 0) {
-				clearBackgroundRect(0, 3, 1, 2, contextInfo);
+				clearBackgroundRect(0, 2, 1, 2, contextInfo, 1);
 				if (typeof x === "number") {
-					contextInfo.fillText("x", xZero, yD);
+					contextInfo.fillText("x", xZero, yC);
 					contextInfo.textAlign = "right";
-					contextInfo.fillText(x, xZeroRight, yD);
+					contextInfo.fillText(x, xZeroRight, yC);
 					contextInfo.textAlign = "left";
 				}
 				if (typeof y === "number") {
-					contextInfo.fillText("y", xZero, yE);
+					contextInfo.fillText("y", xZero, yD);
 					contextInfo.textAlign = "right";
-					contextInfo.fillText(y, xZeroRight, yE);
+					contextInfo.fillText(y, xZeroRight, yD);
 					contextInfo.textAlign = "left";
 				}
 			}
@@ -640,9 +651,6 @@ cgd3 = function () {
 					contextInfo.textAlign = "left";
 				}
 			}
-			// projection
-			clearBackgroundRect(0, 4, 4, 1, contextInfo);
-			contextInfo.fillText("Map Projection: " + mapProjection, xZero, yE);
 		}
 	}
 	function drawHelp() {
@@ -890,8 +898,8 @@ cgd3 = function () {
 	}
 
 	function drawAll() {
-		forceRedraw = 1;
 		if (debugLevel > 0) {console.log("drawAll()"); }
+		forceRedraw = 1;
 		contextBackground.fillStyle = backgroundCanvasColor;
 		contextBackground.fillRect(0, 0, width, height);
 		drawMap();
