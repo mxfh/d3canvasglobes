@@ -37,7 +37,7 @@
 
 cgd3 = function () {
 	var cgd3 = {version: "0.1"},
-		debugLevel, resetFlag, mapProjection, element, divElementId, featureJson, globe, land, coastlines, borders, bordersStates, lakes, countries, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
+		debugLevel, resetFlag, forceRedraw, mapProjection, element, divElementId, featureJson, globe, land, coastlines, borders, bordersStates, lakes, countries, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -576,7 +576,7 @@ cgd3 = function () {
 		// TODO may be optimized by splitting into background and number display
 		// and updating only the changes of active globe,
 		// or by moving this completely to html
-		clearCanvas(contextInfo);
+		//clearCanvas(contextInfo);
 		if (showInfo) {
 			var i, col, xLeft, xRight, lambda, phi, gamma,
 				xZero = getX(0),
@@ -584,9 +584,11 @@ cgd3 = function () {
 				yA = getYtext(0),
 				yB = getYtext(1),
 				yC = getYtext(2),
-				yD = getYtext(3);
-			//console.log(coordsAtMouseCursor);
+				yD = getYtext(3),
+				yE = getYtext(4);
+			// Draw lon/lat mouse position
 			if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
+				clearBackgroundRect(0, 0, 1, 2, contextInfo);
 				backgroundRect(0, 0, 1, 2, fillColor[currentGlobeNumber], contextInfo);
 				contextInfo.fillStyle = textColor;
 				contextInfo.fillText("φ", xZero, yA);
@@ -598,41 +600,49 @@ cgd3 = function () {
 				contextInfo.fillText(formatPrecisionOne(geoCoordinatesAtMouseCursor[0]), xZeroRight, yB);
 				contextInfo.textAlign = "left";
 			}
+			// Draw X/Y mouse position in debug mode
 			contextInfo.fillStyle = textColor;
 			if (debugLevel > 0) {
+				clearBackgroundRect(0, 3, 1, 2, contextInfo);
 				if (typeof x === "number") {
-					contextInfo.fillText("x", xZero, yC);
+					contextInfo.fillText("x", xZero, yD);
 					contextInfo.textAlign = "right";
-					contextInfo.fillText(x, xZeroRight, yC);
+					contextInfo.fillText(x, xZeroRight, yD);
 					contextInfo.textAlign = "left";
 				}
 				if (typeof y === "number") {
-					contextInfo.fillText("y", xZero, yD);
+					contextInfo.fillText("y", xZero, yE);
 					contextInfo.textAlign = "right";
-					contextInfo.fillText(y, xZeroRight, yD);
+					contextInfo.fillText(y, xZeroRight, yE);
 					contextInfo.textAlign = "left";
 				}
 			}
 
 			for (i = 0; i < numberOfGlobes; i += 1) {
-				lambda = (rArrays[i][0] + 180).mod(360) - 180;
-				phi = (rArrays[i][1] + 180).mod(360) - 180;
-				gamma = rArrays[i][2].mod(360);
-				col = i + 1;
-				xLeft = getX(col);
-				xRight = getXalignRight(col);
-				if (gamma !== 0) {backgroundRect(col, 0, 1, 3, fillColor[i], contextInfo);
-				} else {backgroundRect(col, 0, 1, 2, fillColor[i], contextInfo); }
-				contextInfo.fillStyle = textColor;
-				contextInfo.fillText("φ₀", xLeft, yA);
-				contextInfo.fillText("λ₀", xLeft, yB);
-				if (gamma !== 0) {contextInfo.fillText("γ₀", xLeft, yC); }
-				contextInfo.textAlign = "right";
-				contextInfo.fillText(formatPrecisionOne(phi), xRight, yA);
-				contextInfo.fillText(formatPrecisionOne(lambda), xRight, yB);
-				if (gamma !== 0) {contextInfo.fillText(formatPrecisionOne(gamma), xRight, yC); }
-				contextInfo.textAlign = "left";
+				if (selectedGlobes[i] || isAnimated || forceRedraw) {
+					lambda = (rArrays[i][0] + 180).mod(360) - 180;
+					phi = (rArrays[i][1] + 180).mod(360) - 180;
+					gamma = rArrays[i][2].mod(360);
+					col = i + 1;
+					xLeft = getX(col);
+					xRight = getXalignRight(col);
+					clearBackgroundRect(col, 0, 1, 3, contextInfo);
+					if (gamma !== 0) {backgroundRect(col, 0, 1, 3, fillColor[i], contextInfo);
+						} else {backgroundRect(col, 0, 1, 2, fillColor[i], contextInfo); }
+					contextInfo.fillStyle = textColor;
+					contextInfo.fillText("φ₀", xLeft, yA);
+					contextInfo.fillText("λ₀", xLeft, yB);
+					if (gamma !== 0) {contextInfo.fillText("γ₀", xLeft, yC); }
+					contextInfo.textAlign = "right";
+					contextInfo.fillText(formatPrecisionOne(phi), xRight, yA);
+					contextInfo.fillText(formatPrecisionOne(lambda), xRight, yB);
+					if (gamma !== 0) {contextInfo.fillText(formatPrecisionOne(gamma), xRight, yC); }
+					contextInfo.textAlign = "left";
+				}
 			}
+			// projection
+			clearBackgroundRect(0, 4, 4, 1, contextInfo);
+			contextInfo.fillText("Map Projection: " + mapProjection, xZero, yE);
 		}
 	}
 	function drawHelp() {
@@ -880,12 +890,14 @@ cgd3 = function () {
 	}
 
 	function drawAll() {
+		forceRedraw = 1;
 		if (debugLevel > 0) {console.log("drawAll()"); }
 		contextBackground.fillStyle = backgroundCanvasColor;
 		contextBackground.fillRect(0, 0, width, height);
 		drawMap();
 		drawInfo();
 		drawHelp();
+		forceRedraw = 0;
 	}
 	function loadGeometry() {
 		if (debugLevel > 0) {console.log("loadGeometry()"); }
@@ -1192,7 +1204,7 @@ cgd3 = function () {
 		createColorWheel();
 		handleGlobes();
 		setGeometryLOD();
-		drawMap();
+		drawAll();
 	}
 	function loadPreset(p) {
 		if (debugLevel > 0) {console.log("loadPreset(" + p + ")"); }
