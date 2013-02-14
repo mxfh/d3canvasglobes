@@ -36,8 +36,7 @@
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 
 cgd3 = function () {
-	var cgd3 = {version: "0.1"},
-		debugLevel, resetFlag, forceRedraw, mapProjection, element, divElementId, featureJson, globe, land, coastlines, borders, bordersStates, lakes, countries, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
+	var cgd3 = {version: "0.1"}, debugLevel, globalCompositeOperationType, gco, resetFlag, forceRedraw, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -45,6 +44,9 @@ cgd3 = function () {
 	function setDefaults() {
 		firstRun = 1;
 		debugLevel = 0;
+		globalCompositeOperationType = ["source-over", "destination-out", "xor"];
+		// shorthand for globalCompositeOperation https://developer.mozilla.org/en-US/docs/HTML/Canvas/Tutorial/Compositing
+		gco = globalCompositeOperationType;
 		numberOfGlobes = 1;
 		showMirror = 0;
 		doubleClickLengthInMs = 666;
@@ -81,7 +83,10 @@ cgd3 = function () {
 		geometryAtLOD[2] = topojsonPath + "ne_10m_world.json";
 		if (!featureData) {featureData = "topojson/ne_110m_world.json"; }
 		if (!featureJson) {featureJson = "a0countrieslakes"; }
-		geometryLOD = 0;
+		if (!geometryLOD) {geometryLOD = 0; }
+		if (!isFixedLOD) {isFixedLOD = 0; }
+		if (!isFixedAdminLevel) {isFixedAdminLevel = 0; }
+		if (!adminLevel) {adminLevel = 0; }
 		graticuleIntervals = [30, 10, 5, 2, 1];
 		graticuleInterval = graticuleIntervals[0];
 	}
@@ -326,6 +331,18 @@ cgd3 = function () {
 		globalProjection = d3.geo[mapProjection]();
 	};
 
+	cgd3.setFixedLOD = function (booleanValue, lod) {
+		isFixedLOD = booleanValue;
+		if (!lod) {geometryLOD = lod; }
+		setGeoDataDefaults();
+	};
+
+	cgd3.setFixedAdminLevel = function (booleanValue, level) {
+		isFixedAdminLevel = booleanValue;
+		if (!level) {adminLevel = level; }
+		setGeoDataDefaults();
+	};
+
 	cgd3.cycleMapProjection = function (increment) {
 		var availableMapProjections = [
 				//built in
@@ -566,12 +583,12 @@ cgd3 = function () {
 				cols * colWidth + (cols - 1) * gutter + paddingPlus * 2, rows * rowHeight + paddingPlus * 2);
 		}
 	}
-	function drawFilledPath(context, pathName) {
+	function drawFilledPath(context, path, pathName) {
 		context.beginPath();
 		path(pathName);
 		context.fill();
 	}
-	function drawStrokedPath(context, pathName) {
+	function drawStrokedPath(context, path, pathName) {
 		context.beginPath();
 		path(pathName);
 		context.stroke();
@@ -693,113 +710,117 @@ cgd3 = function () {
 			contextHelp.textAlign = "left";
 		}
 	}
-//  getting function definitions out of loops!!!
+//  TODO: getting function definitions out of loops!!!
 
-
-	function drawGlobe(i) {
-		if (debugLevel > 0) {console.log("drawGlobe(i):", i); }
-		// -λ, -φ, γ
-		var ctx, rot, prj,
-			//mode = "destination-out",
-			mode = "xor",
-			modeDefault = "source-over";
-		function drawLand(fLand, fLakes, fBorders, sLand, sBorders) {
-			if (!showCoastlines) {
-				ctx.fillStyle = fLand;
-				drawFilledPath(ctx, land);
-				ctx.globalCompositeOperation = mode;
-				// subtract lakes and borders from continents
-				if (showLakes) {
-					ctx.fillStyle = fLakes;
-					drawFilledPath(ctx, lakes);
+	function drawLand(ctx, path, fLand, fLakes, fBordersA0, fBordersA1, sLand, sBordersA0, sBordersA1) {
+		if (!showCoastlines) {
+			ctx.fillStyle = fLand;
+			drawFilledPath(ctx, path, land);
+			ctx.globalCompositeOperation = gco[1];
+			// subtract lakes and borders from continents
+			if (showLakes) {
+				ctx.fillStyle = fLakes;
+				drawFilledPath(ctx, path, lakes);
+			}
+			if (showBorders > 0) {
+				ctx.strokeStyle = fBordersA0;
+				drawStrokedPath(ctx, path, bordersA0);
+				if (showBorders > 1) {
+					ctx.strokeStyle = fBordersA1;
+					drawStrokedPath(ctx, path, bordersA1);
 				}
-				if (showBorders) {
-					ctx.strokeStyle = fBorders;
-					drawStrokedPath(ctx, borders);
-				}
-				ctx.globalCompositeOperation = modeDefault;
-			} else {
-				ctx.strokeStyle = sLand;
-				drawStrokedPath(ctx, coastlines);
-				if (showLakes) {
-					drawStrokedPath(ctx, lakes);
-				}
-				if (showBorders) {
-					ctx.strokeStyle = sBorders;
-					drawStrokedPath(ctx, borders);
+			}
+			ctx.globalCompositeOperation = gco[0];
+		} else {
+			ctx.strokeStyle = sLand;
+			drawStrokedPath(ctx, path, coastlines);
+			if (showLakes) {
+				drawStrokedPath(ctx, path, lakes);
+			}
+			if (showBorders > 0) {
+				ctx.strokeStyle = sBordersA0;
+				drawStrokedPath(ctx, path, bordersA0);
+				if (showBorders > 1) {
+					ctx.strokeStyle = sBordersA1;
+					drawStrokedPath(ctx, path, bordersA1);
 				}
 			}
 		}
-		function drawGraticule(strokeStyle) {
-			if (showGraticule) {
-				ctx.strokeStyle = strokeStyle; // set graticule width with alpha:
-				drawStrokedPath(ctx, graticule);
-			}
-		}
-		function drawGlobeBackside() {
-			var rotMirror, prjMirror;
-			// flip canvas
-			ctx.translate(width, 0);
-			ctx.scale(-1, 1);
-			// mirrored mode
-			// set center to antipode inverse rotation
-			rotMirror = [-(rArrays[i][0]) + 180, (rArrays[i][1]), -rArrays[i][2]];
-			prjMirror = globalProjection
-				.translate([posX, posY])
-				.rotate(rotMirror)
-				.clipAngle(clipAngle).scale(r);
-			path = d3.geo.path().projection(prjMirror).context(ctx);
-			drawLand(fillColorDarkerA75[i], fillColorA100[i], fillColorA75[i], fillColorA50[i], fillColorA25[i]);
-			drawGraticule(fillColorA25[i]);
-			// flip back to normal
-			ctx.translate(width, 0);
-			ctx.scale(-1, 1);
+	}
 
+	function drawGraticule(ctx, path, strokeStyle) {
+		if (showGraticule) {
+			ctx.strokeStyle = strokeStyle; // set graticule width with alpha:
+			drawStrokedPath(ctx, path, graticule);
 		}
-		ctx = contextGlobe[i];
-		clearCanvas(ctx);
-		if (showMirror) {
-			drawGlobeBackside();
-		}
-		// TODO: Valentines day edition, there should be a nice place to put this code
-		// Since clipping drove me nuts this map is rendered in two parts each shifted by +/-90 degrees and clipped by 90 degrees
-		if (mapProjection === "bonneHeart") {
+	}
 
-			var xOffset = r * 1.321, // TODO: factor is guesswork so far should be derived from projection
-				offset = 90;
-			clipAngle = 89.99999999;
-			function bonneHeartHalf(sign) {
-				rot = [-(rArrays[i][0]) - sign * 90, 0, rArrays[i][2]];
-				// tweak projections here
+	function drawGlobeBackside(ctx, i) {
+		var rotMirror, prjMirror;
+		// flip canvas
+		ctx.translate(width, 0);
+		ctx.scale(-1, 1);
+		// mirrored mode
+		// set center to antipode inverse rotation
+		rotMirror = [-(rArrays[i][0]) + 180, (rArrays[i][1]), -rArrays[i][2]];
+		prjMirror = globalProjection
+			.translate([posX, posY])
+			.rotate(rotMirror)
+			.clipAngle(clipAngle).scale(r);
+		path = d3.geo.path().projection(prjMirror).context(ctx);
+		drawLand(ctx, path, fillColorDarkerA75[i], fillColorA100[i], fillColorA75[i], fillColorA25[i], fillColorA50[i], fillColorA50[i], fillColorA25[i]);
+		drawGraticule(ctx, path, fillColorA25[i]);
+		// flip back to normal
+		ctx.translate(width, 0);
+		ctx.scale(-1, 1);
 
+	}
+
+	function bonneHeart(ctx, i) {
+		var xOffset = r * 1.321, // TODO: factor is guesswork so far should be derived from projection
+			offset = 90, heartColor = "rgba(255, 192, 203,1)";
+		function bonneHeartHalf(sign) {
+			var rot = [-(rArrays[i][0]) - sign * 90, 0, rArrays[i][2]],
 				prj = d3.geo.bonneHeart()
 					.translate([posX + sign * xOffset, posY])
 					.rotate(rot)
 					.parallel(sign * offset)
 					.clipAngle(clipAngle).scale(r);
 
-				path = d3.geo.path().projection(prj).context(ctx);
-				// Filled Style
-				var heartColor = "rgba(255, 192, 203,1)";
-				drawLand(heartColor, fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
-				drawGraticule("rgba(255, 192, 203,0.25)") ;
-			}
-			bonneHeartHalf(1);
-			bonneHeartHalf(-1);
+			path = d3.geo.path().projection(prj).context(ctx);
+			// Filled Style
+			drawLand(ctx, path, heartColor, fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
+			drawGraticule(ctx, path, "rgba(255, 192, 203,0.25)") ;
 		}
-		else {
-		rot = [-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]];
-		// tweak projections here
-		prj = globalProjection
-			.translate([posX, posY])
-			.rotate(rot)
-			.clipAngle(clipAngle).scale(r);
+		// disallow mirror mode
+		if (showMirror) {showMirror = 0; }
+		clipAngle = 89.99999999;
+		// Since clipping drove me nuts this map is rendered in two parts each shifted by +/-90 degrees and clipped by 90 degrees
+		bonneHeartHalf(1);
+		bonneHeartHalf(-1);
 
-		//ctx.globalCompositeOperation = modeDefault;
-		path = d3.geo.path().projection(prj).context(ctx);
-		// Filled Style
-		drawLand(fillColor[i], fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
-		drawGraticule(fillColorDarkerA25[i]);
+	}
+
+	function drawGlobe(i) {
+		if (debugLevel > 0) {console.log("drawGlobe(i):", i); }
+		// -λ, -φ, γ
+		var ctx, rot, prj;
+		ctx = contextGlobe[i];
+		clearCanvas(ctx);
+		if (showMirror) {drawGlobeBackside(ctx, i); }
+		if (mapProjection === "bonneHeart") {bonneHeart(ctx, i);
+			} else {
+			rot = [-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]];
+			// tweak projections here
+			prj = globalProjection
+				.translate([posX, posY])
+				.rotate(rot)
+				.clipAngle(clipAngle).scale(r);
+
+			path = d3.geo.path().projection(prj).context(ctx);
+			// Filled Style
+			drawLand(ctx, path, fillColor[i], fillColorA100[i], fillColorA75[i], fillColorA25[i], fillColorA75[i], fillColorA50[i], fillColorA25[i]);
+			drawGraticule(ctx, path, fillColorDarkerA25[i]);
 		}
 	}
 	function drawFeatureGlobe() {
@@ -818,7 +839,7 @@ cgd3 = function () {
 			path = d3.geo.path().projection(prj).context(ctx);
 			// Filled Style
 			ctx.fillStyle = fillColorDarkerA50[0];
-			drawStrokedPath(ctx, features);
+			drawStrokedPath(ctx, path, features);
 		}
 	}
 	function drawGlobes() {
@@ -835,8 +856,7 @@ cgd3 = function () {
 		}
 	}
 	function drawGradient() {
-		var ctx, rot, prj;
-		ctx = contextGradient;
+		var ctx = contextGradient, rot, prj;
 		if (debugLevel > 0) {console.log("drawGradient()"); }
 		if (debugLevel > 1) {console.log("contextGradient:", ctx); }
 		clearCanvas(ctx);
@@ -845,39 +865,37 @@ cgd3 = function () {
 			clearCanvas(ctx);
 			var offset = 1.321;
 			ctx.fillStyle = "rgba(224,17,95,1)";
-			prj = d3.geo.bonneHeart().parallel(-90).translate([posX -r * offset, posY]).clipAngle(90).scale(r);
+			prj = d3.geo.bonneHeart().parallel(-90).translate([posX - r * offset, posY]).clipAngle(90).scale(r);
 			path = d3.geo.path().projection(prj).context(ctx);
-			drawFilledPath(ctx, globe);
+			drawFilledPath(ctx, path, globe);
 			prj = d3.geo.bonneHeart().parallel(90).translate([posX + r * offset, posY]).clipAngle(90).scale(r);
 			path = d3.geo.path().projection(prj).context(ctx);
-			drawFilledPath(ctx, globe);
+			drawFilledPath(ctx, path, globe);
 			if (debugLevel > 1) {console.log(" └─ Heart", "fillStyle:", ctx.fillColor); }
-		}
-		else {
-		rot = [-(rArrays[0][0]), (-rArrays[0][1]), rArrays[0][2]];
-		// tweak projections here
-		prj = globalProjection
+		} else {
+			// might beneficial to store rotation globally
+			rot = [-(rArrays[0][0]), (-rArrays[0][1]), rArrays[0][2]];
+			// tweak projections here
+			prj = globalProjection
 			//.translate([posX, posY])
-			.rotate(rot)
-			.clipAngle(clipAngle).scale(r);
-
-		if (gradientStyle !== 0) {
-			path = d3.geo.path().projection(prj).context(ctx);
-			// draw gradient
-			if (gradientStyle === 1 && showGradientZoombased) {
-				createGradientSphere();
-				ctx.fillStyle = gradientSphere;
-				drawFilledPath(ctx, globe);
-				if (debugLevel > 1) {console.log(" └─ Gradient", "fillStyle:", ctx.fillStyle); }
-
+				.rotate(rot)
+				.clipAngle(clipAngle).scale(r);
+			if (gradientStyle !== 0) {
+				path = d3.geo.path().projection(prj).context(ctx);
+				// draw gradient
+				if (gradientStyle === 1 && showGradientZoombased) {
+					createGradientSphere();
+					ctx.fillStyle = gradientSphere;
+					drawFilledPath(ctx, path, globe);
+					if (debugLevel > 1) {console.log(" └─ Gradient", "fillStyle:", ctx.fillStyle); }
+				}
+				// draw outline only
+				if (gradientStyle === 2 || !showGradientZoombased) {
+					ctx.strokeStyle = globeOutlineColor;
+					drawStrokedPath(ctx, path, globe);
+					if (debugLevel > 1) {console.log(" └─ Outline", "strokeStyle:", ctx.strokeStyle); }
+				}
 			}
-			// draw outline only
-			if (gradientStyle === 2 || !showGradientZoombased) {
-				ctx.strokeStyle = globeOutlineColor;
-				drawStrokedPath(ctx, globe);
-				if (debugLevel > 1) {console.log(" └─ Outline", "strokeStyle:", ctx.strokeStyle); }
-			}
-		}
 		}
 	}
 	function setAllGlobesToUpdate() {
@@ -921,18 +939,22 @@ cgd3 = function () {
 			/** @namespace json.objects.a0countrieslakes */
 			/** @namespace json.objects.a1countrieslakes */
 			if (!error) {
-				if (geometryLOD === 0) {land = topojson.object(json, json.objects.land); }
-				//if (geometryLOD === 0) {land = topojson.object(json, json.objects.a0countrieslakes); }
-				if (geometryLOD === 1) {land = topojson.object(json, json.objects.a0countrieslakes); }
-				if (geometryLOD === 2) {land = topojson.object(json, json.objects.a1countrieslakes); }
+				land = topojson.object(json, json.objects.land);
+				if (adminLevel === 0) {
+					borders = topojson.object(json, json.objects.a0borders);
+					adminUnits = topojson.object(json, json.objects.a0countrieslakes);
+				}
+				if (adminLevel === 1) {
+					borders = topojson.object(json, json.objects.a1borders);
+					adminUnits = topojson.object(json, json.objects.a1countrieslakes);
+				}
 				// TODO add lat lon bounding boxes to geojson objects
 				// preferably with terraformer.js or own function
 				//var landbounds = eachGeometry(land, calculateBounds);
 				//console.log(landbounds);
 				coastlines = topojson.object(json, json.objects.coastline);
-				borders = topojson.object(json, json.objects.a0borders);
-				bordersStates = topojson.object(json, json.objects.a1borders);
-				countries = topojson.object(json, json.objects.a0countrieslakes);
+				bordersA0 = topojson.object(json, json.objects.a0borders);
+				bordersA1 = topojson.object(json, json.objects.a1borders);
 				states = topojson.object(json, json.objects.a1countrieslakes);
 				lakes = topojson.object(json, json.objects.lakes);
 			}
@@ -1096,20 +1118,20 @@ cgd3 = function () {
 		}, frameDuration);
 	}
 
-	cgd3.toggleHelp = function (boolean) {
-		if (!boolean) {showHelp = showHelp.toggle(); } else {showHelp = boolean; }
+	cgd3.toggleHelp = function (booleanValue) {
+		if (!booleanValue) {showHelp = showHelp.toggle(); } else {showHelp = booleanValue; }
 		drawHelp();
 	};
-	cgd3.toggleInfo = function (boolean) {
-		if (!boolean) {showInfo = showInfo.toggle(); } else {showInfo = boolean; }
+	cgd3.toggleInfo = function (booleanValue) {
+		if (!booleanValue) {showInfo = showInfo.toggle(); } else {showInfo = booleanValue; }
 		drawInfo();
 	};
 	cgd3.toggleMirror = function () {
 		showMirror = showMirror.toggle();
 		drawAllGlobes();
 	};
-	cgd3.toggleAnimation = function (boolean, speed) {
-		if (!boolean) {isAnimated = isAnimated.toggle(); } else {isAnimated = boolean; }
+	cgd3.toggleAnimation = function (booleanvalue, speed) {
+		if (!booleanvalue) {isAnimated = isAnimated.toggle(); } else {isAnimated = booleanvalue; }
 		if (!speed) {speed === undefined; }
 		animateGlobes(speed);
 	};
@@ -1134,6 +1156,10 @@ cgd3 = function () {
 		topojsonPath = pathTo;
 		setGeoDataDefaults();
 	};
+	cgd3.setAdminLevel = function (level) {
+		adminLevel = level;
+		setGeoDataDefaults();
+	};
 	cgd3.setAllDefaults = function () {
 		setDefaults();
 		setGeoDataDefaults();
@@ -1147,7 +1173,7 @@ cgd3 = function () {
 
 	function zoom(delta) {
 		// visDeg visible angle in degrees
-		var i, visDeg = 90 - (Math.acos((diagonal / 2) / r)).toDeg();
+		var i, visDeg = 90 - (Math.acos((diagonal / 2) / r)).toDeg(), visDegHalf = visDeg / 2;
 
 		function setGraticuleInterval(interval) {
 			if (graticuleInterval !== interval) {
@@ -1157,16 +1183,19 @@ cgd3 = function () {
 		}
 
 		if (isNaN(visDeg)) {visDeg = 90; }
+		// sets graticule resolution
 		if (r >= zoomMin && r <= zoomMax) {
 			r = r + delta * r / 20;
 			// clip view
-			if (visDeg / 2 >= graticuleIntervals[0]) {setGraticuleInterval(graticuleIntervals[0]); }
-			if (visDeg / 2 < graticuleIntervals[0] && visDeg / 2 >= graticuleIntervals[1]) {setGraticuleInterval(graticuleIntervals[1]); }
-			if (visDeg / 2 < graticuleIntervals[1] && visDeg / 2 >= graticuleIntervals[2]) {setGraticuleInterval(graticuleIntervals[2]); }
-			if (visDeg / 2 < graticuleIntervals[2] && visDeg / 2 >= graticuleIntervals[3]) {setGraticuleInterval(graticuleIntervals[3]); }
-			if (visDeg / 2 < graticuleIntervals[3] && visDeg / 2 >= graticuleIntervals[4]) {setGraticuleInterval(graticuleIntervals[4]); }
+			if (visDegHalf >= graticuleIntervals[0]) {setGraticuleInterval(graticuleIntervals[0]);
+				} else {
+				for (i = 0; i < graticuleIntervals.length - 1; i += 1) {
+					if (visDegHalf < graticuleIntervals[i] &&  visDegHalf >= graticuleIntervals[i + 1]) {setGraticuleInterval(graticuleIntervals[i + 1]); }
+				}
+			}
 
-
+			// set clipAngle based on zoom
+			// TODO: specifications for different projections, currently orthographic only
 			if (r >= diagonal / 2 && delta > 0) {
 				clipAngle = visDeg;
 			} else if (r >= diagonal / 2 && delta < 0) {
@@ -1174,9 +1203,12 @@ cgd3 = function () {
 			} else {clipAngle = clipAngleMax; }
 			if (debugLevel > 0) {console.log(delta, visDeg, clipAngle); }
 
-			if (r <= diagonal) {setGeometryLOD(0, 0, 0); }
-			if (r > diagonal && r <= diagonal * 4) {setGeometryLOD(1, 1, 0); }
-			if (r > diagonal * 4) {setGeometryLOD(2, 1, 1); }
+			// set LOD
+			if (!isFixedLOD) {
+				if (r <= diagonal) {setGeometryLOD(0, 0, 0); }
+				if (r > diagonal && r <= diagonal * 4) {setGeometryLOD(1, 1, 0); }
+				if (r > diagonal * 4) {setGeometryLOD(2, 1, 1); }
+			}
 
 			// clamp zoom
 			if (r < zoomMin) {r = zoomMin; }
@@ -1314,7 +1346,7 @@ cgd3 = function () {
 			cgd3.toggleAnimation();
 			break;
 		case 66:                                   // B
-			showBorders = showBorders.toggle();
+			showBorders = showBorders.cycle(3);
 			drawAllGlobes();
 			break;
 		case 67:                                   // C

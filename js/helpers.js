@@ -9,6 +9,8 @@ Number.prototype.sign = function () {return this ? this < 0 ? -1 : 1 : 0; };
 Number.prototype.toggle = function () {return this ? 0 : 1; };
 Boolean.prototype.toggle = function () {return this ? false : true; };
 
+// n is number of possible states beginning at 0
+Number.prototype.cycle = function (n) {return (this + 1) % n; };
 function setAllArrayValues(array, value) {
 	var i;
 	for (i = 0; i < array.length; i += 1) {array[i] = value; }
