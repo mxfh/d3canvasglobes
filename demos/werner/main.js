@@ -11,7 +11,11 @@ require.config({
 	}
 });
 
-require(["d3", "topojson", "helpers", "cgd3"],
-	function () {
-		require(["d3projection", "../demos/werner/werner"], function () { });
+require(["d3", "topojson", "helpers"],
+	function (d3, topojson) {
+		require(["d3projection"], function (d3) {
+			require(["cgd3"], function (cgd3) {
+				require(["../demos/werner/werner"], function () {});
+			});
+		});
 	});
