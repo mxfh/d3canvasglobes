@@ -14,5 +14,5 @@ cgd3.setMapProjection("bonneHeart");
 d3.selectAll("body").append("div")
 	.attr("id", "love")
 	.attr("style", "font-family: 'Hoefler Text', Georgia, Garamond, Times, serif; font-size: 64px; text-align: center; width: auto; padding-top: " + window.innerHeight * 0.85 + "px; margin-left: auto; margin-right: auto; z-index: 12;")
-	.text("You are my world.");
+	.text("Not everything is just a projection.");
 

@@ -36,7 +36,7 @@
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 
 cgd3 = function () {
-	var cgd3 = {version: "0.1"}, debugLevel, globalCompositeOperationType, gco, resetFlag, forceRedraw, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, currentRotation, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
+	var cgd3 = {version: "0.1.1"}, debugLevel, globalCompositeOperationType, gco, resetFlag, forceRedraw, animationSpeed, backgroundColor, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -53,6 +53,7 @@ cgd3 = function () {
 		maxFPS = 60;
 		frameDuration = 1000 / maxFPS;
 		colorCycleInterval = 1000 / (maxFPS / 2);
+		animationSpeed = 30;
 		kaleidoscope = 0;
 		mouseDown = 0;
 		shiftKeyDown = 0;
@@ -178,7 +179,7 @@ cgd3 = function () {
 		origin = [canvasPadding, canvasPadding];
 		baselineOffset = 9;
 	}
-	cgd3.setR = function (factor,absolute) {
+	cgd3.setR = function (factor, absolute) {
 		if (!absolute) {r = r * factor; }
 		// if absolute is 1 set directly
 		if (absolute) {r = factor; }
@@ -320,7 +321,7 @@ cgd3 = function () {
 		xTmp = 0;
 		yTmp = 0;
 		// set global projection mode here:
-		if (!mapProjection) { mapProjection = "orthographic"}
+		if (!mapProjection) { mapProjection = "orthographic"; }
 		globalProjection = d3.geo[mapProjection]();
 		// init projections array
 		projections = [];
@@ -682,7 +683,7 @@ cgd3 = function () {
 			contextHelp.fillText("Click to go to position", xRight, getYtext(newLine()));
 			contextHelp.fillText("Zoom with mouse wheel", xRight, getYtext(newLine(2)));
 
-			contextHelp.fillText("To switch globe or move both at once:  Press/Hold [Shift]", xRight, getYtext(newLine()));
+			contextHelp.fillText("To switch globe or move all at once:  Press/Hold [Shift]", xRight, getYtext(newLine()));
 			contextHelp.fillText("For rotation γ (gamma) around center: Drag Mouse and  Hold [Alt]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Start/Stop Animation:  [A]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Disable Momentum:  [M]", xRight, getYtext(newLine(2)));
@@ -700,7 +701,7 @@ cgd3 = function () {
 			contextHelp.fillText("Show/hide land Borders:  [B]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Coastlines only (faster):  [C]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Show/hide Lakes:  [L]", xRight, getYtext(newLine()));
-			contextHelp.fillText("Switch globe colors:  [S]", xRight, getYtext(newLine()));
+			contextHelp.fillText("Cycle globe colors:  [S]", xRight, getYtext(newLine()));
 			contextHelp.fillText("Draw shadow decoration:  [D]", xRight, getYtext(newLine(2)));
 
 			contextHelp.fillText("Show/hide position Info:  [I]", xRight, getYtext(newLine()));
@@ -710,7 +711,6 @@ cgd3 = function () {
 			contextHelp.textAlign = "left";
 		}
 	}
-//  TODO: getting function definitions out of loops!!!
 
 	function drawLand(ctx, path, fLand, fLakes, fBordersA0, fBordersA1, sLand, sBordersA0, sBordersA1) {
 		if (!showCoastlines) {
@@ -756,7 +756,7 @@ cgd3 = function () {
 	}
 
 	function drawGlobeBackside(ctx, i) {
-		var rotMirror, prjMirror;
+		var rotMirror, prjMirror, tmp;
 		// flip canvas
 		ctx.translate(width, 0);
 		ctx.scale(-1, 1);
@@ -768,8 +768,11 @@ cgd3 = function () {
 			.rotate(rotMirror)
 			.clipAngle(clipAngle).scale(r);
 		path = d3.geo.path().projection(prjMirror).context(ctx);
+		tmp = showLakes;
+		showLakes = 0;
 		drawLand(ctx, path, fillColorDarkerA75[i], fillColorA100[i], fillColorA75[i], fillColorA25[i], fillColorA50[i], fillColorA50[i], fillColorA25[i]);
 		drawGraticule(ctx, path, fillColorA25[i]);
+		showLakes = tmp;
 		// flip back to normal
 		ctx.translate(width, 0);
 		ctx.scale(-1, 1);
@@ -778,7 +781,8 @@ cgd3 = function () {
 
 	function bonneHeart(ctx, i) {
 		var xOffset = r * 1.321, // TODO: factor is guesswork so far should be derived from projection
-			offset = 90, heartColor = "rgba(255, 192, 203,1)";
+			offset = 90,
+			heartColor = "rgba(255, 192, 203,1)";
 		function bonneHeartHalf(sign) {
 			var rot = [-(rArrays[i][0]) - sign * 90, 0, rArrays[i][2]],
 				prj = d3.geo.bonneHeart()
@@ -790,7 +794,7 @@ cgd3 = function () {
 			path = d3.geo.path().projection(prj).context(ctx);
 			// Filled Style
 			drawLand(ctx, path, heartColor, fillColorA100[i], fillColorA75[i], fillColorA75[i], fillColorA25[i]);
-			drawGraticule(ctx, path, "rgba(255, 192, 203,0.25)") ;
+			drawGraticule(ctx, path, "rgba(255, 192, 203,0.25)");
 		}
 		// disallow mirror mode
 		if (showMirror) {showMirror = 0; }
@@ -856,14 +860,13 @@ cgd3 = function () {
 		}
 	}
 	function drawGradient() {
-		var ctx = contextGradient, rot, prj;
+		var ctx = contextGradient, rot, prj, offset = 1.321;
 		if (debugLevel > 0) {console.log("drawGradient()"); }
 		if (debugLevel > 1) {console.log("contextGradient:", ctx); }
 		clearCanvas(ctx);
 		if (mapProjection === "bonneHeart") {
 			ctx = contextBackground;
 			clearCanvas(ctx);
-			var offset = 1.321;
 			ctx.fillStyle = "rgba(224,17,95,1)";
 			prj = d3.geo.bonneHeart().parallel(-90).translate([posX - r * offset, posY]).clipAngle(90).scale(r);
 			path = d3.geo.path().projection(prj).context(ctx);
@@ -1091,24 +1094,29 @@ cgd3 = function () {
 		drawInfo();
 	}
 	function cycleColors() {
-		// shift by one, cycle when hold;
+		// shift hue if one globe present, cycle when hold;
 		var hueShiftTmp = hueShift;
-		shiftColors();
-		refreshColorsInterval = setInterval(function () {
+		if (numberOfGlobes === 1) {
+			hueShift = (hueShift + 20) % 360;
 			shiftColors();
-			if (!colorCycleActive) {
-				clearInterval(refreshColorsInterval);
-				hueShift = hueShiftTmp;
+		} else {
+			shiftColors();
+			refreshColorsInterval = setInterval(function () {
 				shiftColors();
-			}
-		}, colorCycleInterval);
+				if (!colorCycleActive) {
+					clearInterval(refreshColorsInterval);
+					hueShift = hueShiftTmp;
+					shiftColors();
+				}
+			}, colorCycleInterval);
+		}
 	}
-	function animateGlobes(offsetFactor) {
+	function animateGlobes(speed) {
 		var a;
 		a = setInterval(function () {
 			var i, offset;
-			if (!offsetFactor) {offsetFactor = 30; }
-			offset = offsetFactor / r;
+			if (speed === undefined) {speed = animationSpeed; }
+			offset = speed / r;
 			for (i = 0; i < numberOfGlobes; i += 1) {
 				rArrays[i] = [rArrays[i][0] - offset, rArrays[i][1], rArrays[i][2]];
 			}
@@ -1119,30 +1127,34 @@ cgd3 = function () {
 	}
 
 	cgd3.toggleHelp = function (booleanValue) {
-		if (!booleanValue) {showHelp = showHelp.toggle(); } else {showHelp = booleanValue; }
+		if (booleanValue === undefined) {showHelp = showHelp.toggle(); } else {showHelp = booleanValue; }
 		drawHelp();
 	};
 	cgd3.toggleInfo = function (booleanValue) {
-		if (!booleanValue) {showInfo = showInfo.toggle(); } else {showInfo = booleanValue; }
+		if (booleanValue === undefined) {showInfo = showInfo.toggle(); } else {showInfo = booleanValue; }
 		drawInfo();
 	};
-	cgd3.toggleMirror = function () {
-		showMirror = showMirror.toggle();
+	cgd3.toggleMirror = function (booleanValue) {
+		if (booleanValue === undefined) {showMirror = showMirror.toggle(); } else {showMirror = booleanValue; }
 		drawAllGlobes();
 	};
-	cgd3.toggleAnimation = function (booleanvalue, speed) {
-		if (!booleanvalue) {isAnimated = isAnimated.toggle(); } else {isAnimated = booleanvalue; }
-		if (!speed) {speed === undefined; }
+	cgd3.toggleAnimation = function (booleanValue, speed) {
+		if (booleanValue === undefined) {isAnimated = isAnimated.toggle(); } else {isAnimated = booleanValue; }
+		if (speed === undefined) {speed = animationSpeed; }
 		animateGlobes(speed);
 	};
-	cgd3.toggleGraticule = function () {
-		showGraticule = showGraticule.toggle();
+	cgd3.toggleGraticule = function (booleanValue) {
+		if (booleanValue === undefined) {showGraticule = showGraticule.toggle(); } else {showGraticule = booleanValue; }
 		drawAllGlobes();
 	};
 
+	cgd3.kaleidoscope = function (booleanValue) {
+		if (booleanValue === undefined) {kaleidoscope = kaleidoscope.toggle(); } else {kaleidoscope = booleanValue; }
+	};
+
 	cgd3.setGradientStyle = function (style) {
-		if (!style) {gradientStyle = (gradientStyle + 1) % 3;
-			} else gradientStyle = style;
+		if (style === undefined) {gradientStyle = (gradientStyle + 1) % 3;
+			} else { gradientStyle = style; }
 		drawAllGlobes();
 	};
 
@@ -1246,17 +1258,24 @@ cgd3 = function () {
 		setGeometryLOD();
 		drawAll();
 	}
-	function loadPreset(p) {
+	cgd3.loadPreset = function (p) {
 		if (debugLevel > 0) {console.log("loadPreset(" + p + ")"); }
-		var i;
-		numberOfGlobes = presets[p].length;
+		var i, preset;
+		// expect preset format [[rot globe0][rot globe 1]...]
+		if (p instanceof Array) {
+			numberOfGlobes = p.length;
+			preset = p;
+		} else {
+			preset = presets[p];
+			numberOfGlobes = preset.length;
+		}
 		setNumberOfGlobes();
 		for (i = 0; i < numberOfGlobes; i += 1) {
-			if (presets[p][i] !== undefined) {
-				rArrays[i] = presets[p][i];
+			if (preset[i] !== undefined) {
+				rArrays[i] = preset[i];
 			} else { rArrays[i] = [0, 0, 0]; }
 		}
-	}
+	};
 	function keyDown(evt) {
 		function hideAllButFirstGlobe() {
 			var i;
@@ -1303,43 +1322,43 @@ cgd3 = function () {
 			hideAllButFirstGlobe();
 			break;
 		case 48:                                   // 0
-			loadPreset(0);
+			cgd3.loadPreset(0);
 			drawAllGlobes();
 			break;
 		case 49:                                   // 1
-			loadPreset(1);
+			cgd3.loadPreset(1);
 			drawAllGlobes();
 			break;
 		case 50:                                   // 2
-			loadPreset(2);
+			cgd3.loadPreset(2);
 			drawAllGlobes();
 			break;
 		case 51:                                   // 3
-			loadPreset(3);
+			cgd3.loadPreset(3);
 			drawAllGlobes();
 			break;
 		case 52:                                   // 4
-			loadPreset(4);
+			cgd3.loadPreset(4);
 			drawAllGlobes();
 			break;
 		case 53:                                   // 5
-			loadPreset(5);
+			cgd3.loadPreset(5);
 			drawAllGlobes();
 			break;
 		case 54:                                   // 6
-			loadPreset(6);
+			cgd3.loadPreset(6);
 			drawAllGlobes();
 			break;
 		case 55:                                   // 7
-			loadPreset(7);
+			cgd3.loadPreset(7);
 			drawAllGlobes();
 			break;
 		case 56:                                   // 8
-			loadPreset(8);
+			cgd3.loadPreset(8);
 			drawAllGlobes();
 			break;
 		case 57:                                   // 9
-			loadPreset(9);
+			cgd3.loadPreset(9);
 			drawAllGlobes();
 			break;
 		case 65:                                   // A
@@ -1371,7 +1390,7 @@ cgd3 = function () {
 			cgd3.toggleInfo();
 			break;
 		case 75:                                   // K
-			kaleidoscope = kaleidoscope.toggle();
+			cgd3.kaleidoscope();
 			break;
 		case 76:                                   // L
 			showLakes = showLakes.toggle();
@@ -1586,7 +1605,7 @@ cgd3 = function () {
 		prepareDocument();
 		initializeAll();
 		// preset overrides number of globes
-		// {loadPreset(4); }
+		// {cgd3.loadPreset(4); }
 		if (debugLevel > 0) {console.log("--- end main"); }
 	};
 
