@@ -1,5 +1,15 @@
 (function() {
-// based on Bonne / Werner
+	var π = Math.PI;
+	var projection = d3.geo.projection, projectionMutator = d3.geo.projectionMutator;
+	function parallel1Projection(projectAt) {
+		var φ0 = 0, m = projectionMutator(projectAt), p = m(φ0);
+		p.parallel = function(_) {
+			if (!arguments.length) return φ0 / π * 180;
+			return m(φ0 = _ * π / 180);
+		};
+		return p;
+	}
+	// based on Bonne / Werner
 	function bonneHeart(λOffset) {
 		var //φ0 = 1.2835, // 85° fixed for heart
 			φ0 = 1.57079633, // 85° fixed for heart
