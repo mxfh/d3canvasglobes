@@ -3,10 +3,10 @@
 require.config({
 	baseUrl: "../../js/", // otherwise same as ../js/main.js
 	paths: {
-		d3: "external/d3.v3.min",
-		topojson: "external/topojson.v0.min",
+		d3: "external/d3.min",
+		topojson: "external/topojson",
 		// projections addon
-		d3projection:  "external/d3.geo.projection.v0.bonnemod",
+		d3projection:  "external/d3.geo.projection.v0",
 		cgd3: "../cgd3"
 	}
 });
