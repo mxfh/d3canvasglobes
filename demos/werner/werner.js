@@ -1,7 +1,6 @@
 console.log(cgd3.version);
 cgd3.setNaturalEarthPath("../../topojson/");
 cgd3.setFeatureData("../../topojson/ne_110m_world.json");
-cgd3.setAllDefaults();
 cgd3.firstDraw();
 cgd3.toggleInfo(0);
 cgd3.toggleHelp(0);

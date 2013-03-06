@@ -36,7 +36,8 @@
 // TODO: Tissot's-Indicatrix (Pseudo/real)
 
 cgd3 = function () {
-	var cgd3 = {version: "0.1.1"}, debugLevel, globalCompositeOperationType, gco, resetFlag, forceRedraw, animationSpeed, backgroundColor, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
+	"use strict";
+	var cgd3 = {version: "0.1.build3"}, debugLevel, globalCompositeOperationType, gco, resetFlag, forceRedraw, animationSpeed, backgroundColor, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -88,6 +89,7 @@ cgd3 = function () {
 		if (!isFixedLOD) {isFixedLOD = 0; }
 		if (!isFixedAdminLevel) {isFixedAdminLevel = 0; }
 		if (!adminLevel) {adminLevel = 0; }
+		// default intervals for graticule resolutions
 		graticuleIntervals = [30, 10, 5, 2, 1];
 		graticuleInterval = graticuleIntervals[0];
 	}
@@ -262,18 +264,8 @@ cgd3 = function () {
 		clipAngle = angle;
 		if (!angleMax) {clipAngleMax = angle; } else {clipAngleMax = angleMax; }
 	};
-	function initializeProjection() {
-		if (debugLevel > 0) {console.log("initializeProjection()"); }
-		if (debugLevel > 1) {console.log(" └─ rArrays[]:", rArrays); }
 
-		rArrays = [];
-		rArrayDefault = [0, 0, 0];
-		if (!clipAngleMax || resetFlag) {clipAngleMax = 88; }
-		if (!clipAngle || resetFlag) {clipAngle = clipAngleMax; }
-		zoomMin = 10;
-		zoomMax = 10000;
-		delta = 0;
-		// λ (longitude) and φ (latitude) of projection center, (γ) rotation angle counter-clockwise in degrees
+	function definePresets() {
 		presets = []; // [[λ, φ, γ], [ λ, φ, γ]]
 		presets[0] = [
 			[0, 0, 0],
@@ -315,6 +307,19 @@ cgd3 = function () {
 			[130, -35, 0],
 			[135, -67, 0]
 		];
+	}
+
+	function initializeProjection() {
+		if (debugLevel > 0) {console.log("initializeProjection()"); }
+		if (debugLevel > 1) {console.log(" └─ rArrays[]:", rArrays); }
+		rArrays = [];
+		rArrayDefault = [0, 0, 0];
+		if (!clipAngleMax || resetFlag) {clipAngleMax = 88; }
+		if (!clipAngle || resetFlag) {clipAngle = clipAngleMax; }
+		zoomMin = 10;
+		zoomMax = 10000;
+		delta = 0;
+		// λ (longitude) and φ (latitude) of projection center, (γ) rotation angle counter-clockwise in degrees
 		diagonal = Math.sqrt(maxDim * maxDim + minDim * minDim);
 		yRel = 0;
 		xRel = 0;
@@ -522,23 +527,24 @@ cgd3 = function () {
 	function initializeAll() {
 		initializeLayout();
 		initializeColors();
+		definePresets();
 		initializeProjection();
 		initializeGlobes();
 		handleGlobes();
 	}
 	function createGradientSphere() {
 		gradientSphere = contextGradient.createRadialGradient(posX - 0.3 * r, posY - 0.5 * r, 0, posX, posY, r * 1.03);
-		gradientSphere.addColorStop(0, gradientSphereColor.setAlpha(0));
-		gradientSphere.addColorStop(0.1, gradientSphereColor.setAlpha(0.01));
-		gradientSphere.addColorStop(0.3, gradientSphereColor.setAlpha(0.02));
-		gradientSphere.addColorStop(0.5, gradientSphereColor.setAlpha(0.05));
+		gradientSphere.addColorStop(0   , gradientSphereColor.setAlpha(0   ));
+		gradientSphere.addColorStop(0.1 , gradientSphereColor.setAlpha(0.01));
+		gradientSphere.addColorStop(0.3 , gradientSphereColor.setAlpha(0.02));
+		gradientSphere.addColorStop(0.5 , gradientSphereColor.setAlpha(0.05));
 		gradientSphere.addColorStop(0.65, gradientSphereColor.setAlpha(0.09));
 		gradientSphere.addColorStop(0.75, gradientSphereColor.setAlpha(0.14));
-		gradientSphere.addColorStop(0.825, gradientSphereColor.setAlpha(0.2));
-		gradientSphere.addColorStop(0.9, gradientSphereColor.setAlpha(0.29));
+		gradientSphere.addColorStop(0.83, gradientSphereColor.setAlpha(0.2 ));
+		gradientSphere.addColorStop(0.9 , gradientSphereColor.setAlpha(0.29));
 		gradientSphere.addColorStop(0.95, gradientSphereColor.setAlpha(0.42));
 		gradientSphere.addColorStop(0.98, gradientSphereColor.setAlpha(0.55));
-		gradientSphere.addColorStop(1, gradientSphereColor.setAlpha(0.62));
+		gradientSphere.addColorStop(1   , gradientSphereColor.setAlpha(0.62));
 	}
 
 	function calcTan() { // Calculate Angle from projection center
@@ -965,7 +971,7 @@ cgd3 = function () {
 			if (firstRun) {drawAll(); firstRun = 0; }
 		});
 		d3.json(featureData, function (error, json) {
-// TODO 2nd json-file should be appended to first loop
+			// TODO 2nd json-file should be appended to first loop
 			// console.log(featureData);
 			if (debugLevel > 0) {console.log("d3.json - features"); }
 			if (error) {console.log(error); }
@@ -1251,6 +1257,7 @@ cgd3 = function () {
 			console.info("Rendering " + numberOfGlobes + " Globes");
 		}
 		if (debugLevel > 0) {console.info("start globe change"); }
+		// TODO remove only affected canvases
 		d3.selectAll("div").remove();
 		prepareDocument();
 		createColorWheel();
@@ -1273,7 +1280,7 @@ cgd3 = function () {
 		for (i = 0; i < numberOfGlobes; i += 1) {
 			if (preset[i] !== undefined) {
 				rArrays[i] = preset[i];
-			} else { rArrays[i] = [0, 0, 0]; }
+			} else { rArrays[i] = rArrayDefault; }
 		}
 	};
 	function keyDown(evt) {
@@ -1309,6 +1316,7 @@ cgd3 = function () {
 		var validKey = 1;
 		evt = evt || window.event;
 		if (debugLevel > 1) {console.log("keyDown(evt) evt.keyCode:", evt.keyCode); }
+		//noinspection FallthroughInSwitchStatementJS
 		switch (evt.keyCode) {
 		case 16:                                   // Shift
 			selectAllGlobes();
@@ -1604,15 +1612,18 @@ cgd3 = function () {
 		setGeometryLOD();
 		prepareDocument();
 		initializeAll();
+		setNumberOfGlobes();
 		// preset overrides number of globes
 		// {cgd3.loadPreset(4); }
 		if (debugLevel > 0) {console.log("--- end main"); }
 	};
 
 	cgd3.firstDraw = function () {
+		cgd3.setAllDefaults();
 		setGeometryLOD();
 		prepareDocument();
 		initializeAll();
+		setNumberOfGlobes();
 	};
 
 
