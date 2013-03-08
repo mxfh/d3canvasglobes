@@ -1,6 +1,6 @@
 console.info(cgd3.version);
 cgd3.firstDraw();
-cgd3.loadPreset(1);
+cgd3.loadPreset(2);
 cgd3.setHeadlineString("d3.js powered Globes on 2D-Canvas element with Leap Motion controller - github.com/mxfh/d3canvasglobes");
 cgd3.toggleHeadline();
 
@@ -10,7 +10,7 @@ var latestFrame = {timestamp : 0},
 	lastV = [[0, 0, 0], [0, 0, 0]],
 	distance = [0, 0],
 	maxHands = 1,
-	maxSensitivity = 0.4,
+	maxSensitivity = 0.6,
 	newConnection = 0,
 	movementFactor =  [0.05, 0.05, 1],
 	maxRange = 40; //set maxRange based on use in cm? should be smaller 80
@@ -50,16 +50,15 @@ function getHand(i) {
 				latestFrame.hands[i].sphereCenter[1] * latestFrame.hands[i].sphereCenter[1] +
 				latestFrame.hands[i].sphereCenter[2] * latestFrame.hands[i].sphereCenter[2]
 				), 1/3) / maxRange;
-		if (distance[i] > maxSensitivity) {
+		if (distance[i] < 1 && distance[i] > 0.2 ) {
 			for (j = 0; j < 3; j += 1) {h[i][j] = latestFrame.hands[i].palmVelocity[j] * (1 - distance[i]);}
-		} else if (distance[i] <= maxSensitivity) {
-			for (j = 0; j < 3; j += 1) {h[i][j] = latestFrame.hands[i].palmVelocity[j] * distance[i];}
-		} else {h[i] = [];}
+		//} else if (distance[i] <= maxSensitivity) {
+		//	for (j = 0; j < 3; j += 1) {h[i][j] = latestFrame.hands[i].palmVelocity[j] * distance[i];}
+		} else {h[i] = [0,0,0];}
 	}
-	catch(err) {h[i] = [];}
+	catch(err) {h[i] = [0,0,0];}
 }
 Leap.loop(function(frame) {
-	"use strict";
 	var i;
 	if (!newConnection) {
 		newConnection = 1;
@@ -72,12 +71,12 @@ Leap.loop(function(frame) {
 			"- precision mode enabled\n" +
 			"- robust mode disabled");
 	}
-
 	if (latestFrame !== frame) {
 		latestFrame = frame;
 		for (i = 0; i < maxHands; i += 1) {
 			getHand(i);
-			moveGlobe(i);
 		}
 	}
+
+	moveGlobe(0);
 });
