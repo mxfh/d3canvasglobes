@@ -1,16 +1,17 @@
 /* set up environment with require.js */
-"use strict";
 
 require.config({
+	baseUrl: "js/",
 	paths: {
 		d3: "external/d3.min",
 		topojson: "external/topojson",
-		// projections addon
+		leap: "external/leap.min",
+		// projections add-on
 		d3projection:  "external/d3.geo.projection.v0",
 		cgd3: "../cgd3"
 	}
 });
-require(["d3", "topojson", "helpers", "cgd3"],
+require(["d3", "topojson", "helpers", "cgd3", "leap"],
 	function () {
-		require(["d3projection", "demo.newsglobe"], function () { });  //runs demo.newsglobe
+		require(["d3projection", "../demos/leap/demo.leap"], function () { });  //runs demo.newsglobe
 	});

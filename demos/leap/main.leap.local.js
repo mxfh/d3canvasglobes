@@ -1,7 +1,7 @@
 /* set up environment with require.js */
-"use strict";
 
 require.config({
+	baseUrl: "../../js/", // otherwise same as ../js/main.js
 	paths: {
 		d3: "external/d3.min",
 		topojson: "external/topojson",
@@ -13,5 +13,7 @@ require.config({
 });
 require(["d3", "topojson", "helpers", "cgd3", "leap"],
 	function () {
-		require(["d3projection", "demo.leap"], function () { });  //runs demo.newsglobe
+		cgd3.setNaturalEarthPath("../../topojson/");
+		cgd3.setFeatureData("../../topojson/ne_110m_world.json");
+		require(["d3projection", "../demos/leap/demo.leap"], function () {});  //runs demo.newsglobe
 	});

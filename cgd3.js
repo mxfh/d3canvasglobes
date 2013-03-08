@@ -37,7 +37,7 @@
 
 cgd3 = function () {
 	"use strict";
-	var cgd3 = {version: "0.1.build004"}, debugLevel, showHeadline, globalCompositeOperationType, gco, resetFlag, forceRedraw, animationSpeed, backgroundColor, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
+	var cgd3 = {version: "0.2"}, debugLevel, showHeadline, headlineString, globalCompositeOperationType, gco, resetFlag, forceRedraw, animationSpeed, backgroundColor, adminLevel, isFixedLOD, isFixedAdminLevel, mapProjection, element, divElementId, featureJson, globe, bordersA0, land, coastlines, borders, bordersA1, lakes, adminUnits, states, features, graticule, graticuleIntervals, graticuleInterval, fillColor, fillColorDarker, fillColorDarkerA100, fillColorDarkerA75, fillColorDarkerA50, fillColorDarkerA25, fillColorLighter, fillColorLighterA100, fillColorLighterA75, fillColorLighterA50, fillColorLighterA25, fillColorA25, fillColorA50, fillColorA75, fillColorA100, textColor, gradientSphere, gradientSphereColor, globeOutlineColor, darkTone, brightTone, backgroundCanvasColor, refreshColorsInterval, width, height, origin, minSize, maxDim, minDim, diagonal, zoomMin, zoomMax, canvasPadding, globePadding, lineNumber, colWidth, rowHeight, padding, gutter, baselineOffset, formatPrecisionOne, geometryAtLOD, geometryLOD, featureData, topojsonPath, topojsonData, clipAngleMax, clipAngle, presets, rArrays, rArrayDefault, gammaTmp, gammaStart, globalProjection, projections, path, canvas, z, canvasID, canvasDefaultStyle, canvasBackground, canvasGradient, canvasInfo, canvasHelp, canvasGlobe, canvasFeatureGlobe, contextFeatureGlobe, context, contextBackground, contextGradient, contextInfo, contextHelp, contextGlobe, posX, posY, rInit, r, x, y, xTmp, yTmp, xRel, yRel, delta, geoCoordinatesAtMouseCursor, lastClick, doubleClickLengthInMs, maxFPS, frameDuration, colorCycleInterval, momentumFlag, isAnimated, mouseDown, shiftKeyDown, altKeyDown, colorCycleActive, gradientStyle, showGradientZoombased, showGraticule, showBorders, showLakes, showFeatureGlobe, showHelp, showInfo, showCoastlines, updateGlobes, showGlobes, selectedGlobes, lastSelectedGlobes, currentGlobeNumber, pi, radToDegFactor, hueWheel, hueShift, kaleidoscope, numberOfGlobes, lastNumberOfGlobes, showMirror, firstRun;
 
 	// math
 	Number.prototype.toDeg = function () {return this * radToDegFactor; };
@@ -47,6 +47,7 @@ cgd3 = function () {
 		debugLevel = 0;
 		forceRedraw = 0;
 		showHeadline = 0;
+		headlineString = "";
 		globalCompositeOperationType = ["source-over", "destination-out", "xor"];
 		// shorthand for globalCompositeOperation https://developer.mozilla.org/en-US/docs/HTML/Canvas/Tutorial/Compositing
 		gco = globalCompositeOperationType;
@@ -626,11 +627,7 @@ cgd3 = function () {
 				clearBackgroundRect(0, -2, 13, 1, contextInfo);
 				contextInfo.textAlign = "left";
 				contextInfo.fillStyle = textColor;
-				contextInfo.fillText(
-					"d3.js powered Globes on 2D-Canvas element with Leap Motion controller - github.com/mxfh/d3canvasglobes",
-					xZero,
-					getYtext(-1.66));
-			}
+				contextInfo.fillText(headlineString, xZero,	getYtext(-1.66)); }
 			contextInfo.font = '9pt Garamond';
 			// Draw lon/lat mouse position
 			if (geoCoordinatesAtMouseCursor !== undefined && !isNaN(geoCoordinatesAtMouseCursor[0]) && !isNaN(geoCoordinatesAtMouseCursor[1])) {
@@ -1164,6 +1161,10 @@ cgd3 = function () {
 	cgd3.toggleHeadline = function (booleanValue) {
 		if (booleanValue === undefined) {showHeadline = showHeadline.toggle(); } else {showInfo = booleanValue; }
 		cgd3.drawInfo();
+	};
+
+	cgd3.setHeadlineString = function (inputString) {
+		headlineString = inputString;
 	};
 
 	cgd3.toggleMirror = function (booleanValue) {

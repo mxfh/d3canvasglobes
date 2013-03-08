@@ -1,6 +1,7 @@
 console.info(cgd3.version);
 cgd3.firstDraw();
 cgd3.loadPreset(1);
+cgd3.setHeadlineString("d3.js powered Globes on 2D-Canvas element with Leap Motion controller - github.com/mxfh/d3canvasglobes");
 cgd3.toggleHeadline();
 
 var latestFrame = {timestamp : 0},
