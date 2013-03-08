@@ -687,7 +687,7 @@ cgd3 = function () {
 				}
 			}
 		}
-	}
+	};
 	function drawHelp() {
 		// TODO may be moved to html
 		clearCanvas(contextHelp);
@@ -843,7 +843,7 @@ cgd3 = function () {
 			drawLand(ctx, path, fillColor[i], fillColorA100[i], fillColorA75[i], fillColorA25[i], fillColorA75[i], fillColorA50[i], fillColorA25[i]);
 			drawGraticule(ctx, path, fillColorDarkerA25[i]);
 		}
-	}
+	};
 	function drawFeatureGlobe() {
 		if (showFeatureGlobe) {
 			if (debugLevel > 0) {console.log("drawFeatureGlobe()"); }
@@ -926,7 +926,7 @@ cgd3 = function () {
 		if (debugLevel > 0) {console.log("drawAllGlobes()"); }
 		setAllGlobesToUpdate();
 		drawGlobes();
-	}
+	};
 
 	function drawMap() {
 		if (debugLevel > 0) {console.log("drawMap()"); }

@@ -8,16 +8,21 @@ var latestFrame = {timestamp : 0},
 	diffV = [0, 0],
 	lastV = [[0, 0, 0], [0, 0, 0]],
 	distance = [0, 0],
-	maxHands = 1;
-	maxSensitivity = 0.4;
+	maxHands = 1,
+	maxSensitivity = 0.4,
+	newConnection = 0,
+	movementFactor =  [0.05, 0.05, 1],
 	maxRange = 40; //set maxRange based on use in cm? should be smaller 80
+
 function manipulateGlobe(i, v) {
-	cgd3.setRelativeRotation(i, [-v[0] * 0.04, v[1] * 0.04, 0]);
+	"use strict";
+	cgd3.setRelativeRotation(i, [-v[0] * movementFactor[0], v[1] * movementFactor[1], 0]);
 	//cgd3.setRotation(i, [v[2] * 220, v[1] * 120, v[0] * 180]);
 	cgd3.drawGlobe(i);
 	cgd3.drawInfo(1);
 }
 function moveGlobe(i) {
+	"use strict";
 	if (h[i][0] !== 0 && latestFrame.pointables.length > 0) {
 		diffV[i] = [
 			Math.abs(h[i][0] - lastV[i][0]) +
@@ -53,13 +58,25 @@ function getHand(i) {
 	catch(err) {h[i] = [];}
 }
 Leap.loop(function(frame) {
+	"use strict";
 	var i;
+	if (!newConnection) {
+		newConnection = 1;
+		alert("Leap Motion controller detected.\n\n" +
+			"current maximum interaction distance:\n" +	maxRange + " cm\n\n" +
+			"For optimal interaction use\n" +
+			"Leap SDK 0.7.5 or higher\n" +
+			"with the following settings:\n\n" +
+			"- low resource mode\n" +
+			"- precision mode enabled\n" +
+			"- robust mode disabled");
+	}
+
 	if (latestFrame !== frame) {
 		latestFrame = frame;
 		for (i = 0; i < maxHands; i += 1) {
 			getHand(i);
 			moveGlobe(i);
 		}
-
 	}
 });
