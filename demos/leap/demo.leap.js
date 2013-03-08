@@ -77,6 +77,5 @@ Leap.loop(function(frame) {
 			getHand(i);
 		}
 	}
-
-	moveGlobe(0);
+	for (i = 0; i < maxHands; i += 1) {moveGlobe(i);}
 });
