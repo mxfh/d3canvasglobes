@@ -1,8 +1,23 @@
 console.info(cgd3.version);
 cgd3.firstDraw();
-cgd3.loadPreset(2);
-cgd3.setHeadlineString("d3.js powered Globes on 2D-Canvas element with Leap Motion controller - github.com/mxfh/d3canvasglobes");
-cgd3.toggleHeadline();
+cgd3.loadPreset(
+  [
+    [15, 40, 0],
+    [15, 40, 0]
+  ]
+);
+cgd3.toggleLakes(1);
+cgd3.toggleGraticule(1);
+cgd3.hideAllButFirstGlobe();
+setTimeout(function() {
+  cgd3.toggleHelp(0);
+  console.info(
+    ' on initial load auto-hide help after 15 seconds,' +
+      ' show again by pressing \'H\''
+  );
+}, 15000);
+//cgd3.setHeadlineString("");
+//cgd3.toggleHeadline();
 
 var latestFrame = {timestamp : 0},
 	h = [[],[]],

@@ -478,7 +478,9 @@ CircularBuffer.prototype.push = function(o) {
   return this.pos++;
 }
 
-},{}],5:[function(require,module,exports){var Frame = require('./frame').Frame
+},{}],5:[function(require,module,exports){var inNode = typeof(window) === 'undefined';
+
+var Frame = require('./frame').Frame
   , CircularBuffer = require("./circular_buffer").CircularBuffer
   , Pipeline = require("./pipeline").Pipeline
   , EventEmitter = require('events').EventEmitter
@@ -492,23 +494,24 @@ var Controller = exports.Controller = function(opts) {
   var connectionType = this.connectionType();
   this.connection = new connectionType({
     enableGestures: opts && opts.enableGestures,
-    host: opts && opts.host,
-    frame: function(frame) {
-      controller.processFrame(frame)
-    }
+    host: opts && opts.host
+  });
+  this.connection.on('frame', function(frame) {
+    controller.processFrame(frame);
   });
 
   // Delegate connection events
+  this.connection.on('ready', function() { controller.emit('ready') });
   this.connection.on('connect', function() { controller.emit('connect') });
   this.connection.on('disconnect', function() { controller.emit('disconnect') });
 }
 
 Controller.prototype.inBrowser = function() {
-  return typeof(window) !== 'undefined';
+  return !inNode;
 }
 
 Controller.prototype.useAnimationLoop = function() {
-  return typeof(window) !== 'undefined' && typeof(chrome) === "undefined";
+  return this.inBrowser() && typeof(chrome) === "undefined";
 }
 
 Controller.prototype.connectionType = function() {
@@ -567,10 +570,6 @@ Controller.prototype.processFrame = function(frame) {
     var frame = this.pipeline.run(frame);
     if (!frame) frame = Frame.Invalid;
   }
-  this.processRawFrame(frame);
-}
-
-Controller.prototype.processRawFrame = function(frame) {
   frame.controller = this;
   frame.historyIdx = this.history.push(frame);
   this.lastFrame = frame;
@@ -604,7 +603,6 @@ extend(Controller.prototype, EventEmitter.prototype);
  * Access Frame objects using the {@link Controller#frame}() function.
  *
  * @borrows Motion#translation as #translation
- * @borrows Motion#matrix as #matrix
  * @borrows Motion#rotationAxis as #rotationAxis
  * @borrows Motion#rotationAngle as #rotationAngle
  * @borrows Motion#rotationMatrix as #rotationMatrix
@@ -685,6 +683,7 @@ var Frame = exports.Frame = function(data) {
   this.rotation = data.r;
   this._scaleFactor = data.s;
   this.data = data;
+  this.type = 'frame'; // used by event emitting
   var handMap = {};
   for (var handIdx = 0, handCount = data.hands.length; handIdx != handCount; handIdx++) {
     var hand = new Hand(data.hands[handIdx]);
@@ -896,8 +895,9 @@ Connection.prototype.setupSocket = function() {
 }
 
 Connection.prototype.teardownSocket = function() {
-  this.socket.disconnect();
-  this.socket = null;
+  this.socket.close();
+  delete this.socket;
+  delete this.protocol;
 }
 },{"./base_connection":18}],9:[function(require,module,exports){exports.UI = {
   Region: require("./ui/region").Region,
@@ -1411,7 +1411,8 @@ var Gesture = exports.Gesture = function(data) {
  * <img src="images/Leap_Gesture_Circle.png"/>
  *
  * **Important:** To use circle gestures in your application, you must enable
- * recognition of the circle gesture. You can enable recognition with:
+ * recognition of the circle gesture. You can enable recognition when you create
+ * the Leap Controller or start the Leap.loop().
  *
  *    TODO
  *
@@ -1672,7 +1673,6 @@ var KeyTapGesture = function(data) {
  * Test for validity with the {@link Hand#valid} property.
  *
  * @borrows Motion#translation as #translation
- * @borrows Motion#matrix as #matrix
  * @borrows Motion#rotationAxis as #rotationAxis
  * @borrows Motion#rotationAngle as #rotationAngle
  * @borrows Motion#rotationMatrix as #rotationMatrix
@@ -2015,7 +2015,7 @@ var Motion = exports.Motion = {
              this._translation[2] - fromFrame._translation[2] ];
   },
   /**
-   * rotationAxis() description.
+   * The axis around which the rotation takes place.
    * @method Motion.prototype.rotationAxis
    * @param {Frame} fromFrame A different frame description.
    * @returns {Array: [x,y,z]} rotationAxis Return description.
@@ -2108,20 +2108,25 @@ var Motion = exports.Motion = {
 }
 
 },{"./util":12}],18:[function(require,module,exports){var chooseProtocol = require('./protocol').chooseProtocol
-  , util = require('util')
   , EventEmitter = require('events').EventEmitter
   , extend = require('./util').extend;
 
 var Connection = exports.Connection = function(opts) {
   this.host = opts && opts.host || "127.0.0.1";
-  if (opts && opts.frame) this.frameHandler = opts.frame;
-  this.enableGestures = opts && opts.enableGestures ? true : false;
+  var connection = this;
+  this.on('ready', function() {
+    connection.enableGestures(opts && opts.enableGestures);
+  });
 }
 
 Connection.prototype.handleOpen = function() {
   this.stopReconnection();
-  this.socket.send(util.format("%j", {enableGestures: this.enableGestures}));
   this.emit('connect');
+}
+
+Connection.prototype.enableGestures = function(enabled) {
+  this.gesturesEnabled = enabled ? true : false;
+  this.send(this.protocol.encode({"enableGestures": this.gesturesEnabled}));
 }
 
 Connection.prototype.handleClose = function() {
@@ -2144,19 +2149,21 @@ Connection.prototype.stopReconnection = function() {
 
 Connection.prototype.disconnect = function() {
   if (!this.socket) return;
-  this.socket.close();
+  this.teardownSocket();
   this.socket = undefined;
+  this.protocol = undefined;
 }
 
 Connection.prototype.handleData = function(data) {
   var message = JSON.parse(data);
-  if (message.version) {
-    this.protocol = chooseProtocol(message);
-    this.serverVersion = this.protocol.version;
-    if (this.readyHandler) this.readyHandler(this.serverVersion);
+  var messageEvent;
+  if (this.protocol === undefined) {
+    messageEvent = this.protocol = chooseProtocol(message);
+    this.emit('ready');
   } else {
-    this.protocol(message, this);
+    messageEvent = this.protocol(message);
   }
+  this.emit(messageEvent.type, messageEvent);
 }
 
 Connection.prototype.connect = function() {
@@ -2167,9 +2174,13 @@ Connection.prototype.connect = function() {
   return true;
 }
 
+Connection.prototype.send = function(data) {
+  this.socket.send(data);
+}
+
 extend(Connection.prototype, EventEmitter.prototype);
 
-},{"util":22,"events":10,"./protocol":23,"./util":12}],19:[function(require,module,exports){var EventEmitter = require('events').EventEmitter
+},{"events":10,"./protocol":22,"./util":12}],19:[function(require,module,exports){var EventEmitter = require('events').EventEmitter
   , extend = require('../util').extend
 
 var Region = exports.Region = function(start, end) {
@@ -2256,7 +2267,28 @@ Region.prototype.mapToXY = function(position, width, height) {
 }
 
 extend(Region.prototype, EventEmitter.prototype)
-},{"events":10,"../util":12}],22:[function(require,module,exports){var events = require('events');
+},{"events":10,"../util":12}],22:[function(require,module,exports){var Frame = require('./frame').Frame
+  , util = require('util');
+
+var chooseProtocol = exports.chooseProtocol = function(header) {
+  switch(header.version) {
+    case 1:
+      var protocol = function(data) {
+        return new Frame(data);
+      }
+      protocol.encode = function(message) {
+        return util.format("%j", message);
+      }
+      protocol.version = 1;
+      protocol.versionLong = 'Version 1';
+      protocol.type = 'version';
+      return protocol;
+    default:
+      throw "unrecognized version";
+  }
+}
+
+},{"util":23,"./frame":6}],23:[function(require,module,exports){var events = require('events');
 
 exports.isArray = isArray;
 exports.isDate = function(obj){return Object.prototype.toString.call(obj) === '[object Date]'};
@@ -2608,23 +2640,7 @@ exports.format = function(f) {
   return str;
 };
 
-},{"events":10}],23:[function(require,module,exports){var Frame = require('./frame').Frame
-
-var chooseProtocol = exports.chooseProtocol = function(header) {
-  switch(header.version) {
-    case 1:
-      var protocol = function(data, connection) {
-        if (connection.frameHandler) connection.frameHandler(new Frame(data));
-      }
-      protocol.version = 1;
-      protocol.versionLong = 'Version 1';
-      return protocol;
-    default:
-      throw "unrecognized version";
-  }
-}
-
-},{"./frame":6}],13:[function(require,module,exports){var Frame = require('./frame').Frame
+},{"events":10}],13:[function(require,module,exports){var Frame = require('./frame').Frame
   , WebSocket = require('ws')
 
 var Connection = exports.Connection = require('./base_connection').Connection
@@ -2641,7 +2657,8 @@ Connection.prototype.setupSocket = function() {
 
 Connection.prototype.teardownSocket = function() {
   this.socket.close();
-  this.socket = null;
+  delete this.socket;
+  delete this.protocol;
 }
 },{"./frame":6,"./base_connection":18,"ws":24}],24:[function(require,module,exports){(function(global){/// shim for browser packaging
 

@@ -24,3 +24,4 @@ dev.leap.html
 
 topojson/features
 tests/
+js/external/update.sh

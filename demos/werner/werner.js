@@ -7,7 +7,7 @@ cgd3.toggleHelp(0);
 cgd3.toggleGraticule();
 cgd3.toggleAnimation(1, 15);
 cgd3.setR(0.3);
-cgd3.setFixedLOD(1, 1);
+cgd3.setFixedLOD(1, 0);
 cgd3.setMapProjection("bonneHeart");
 
 d3.selectAll("body").append("div")
