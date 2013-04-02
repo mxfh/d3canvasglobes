@@ -436,8 +436,6 @@ cgd3 = (function() {
     if (debugLevel > 1) {console.log(' └─ rArrays[]:', rArrays); }
     rArrays = [];
     rArrayDefault = [0, 0, 0];
-    if (!clipAngleMax || resetFlag) {clipAngleMax = 88; }
-    if (!clipAngle || resetFlag) {clipAngle = clipAngleMax; }
     zoomMin = 10;
     zoomMax = 10000;
     delta = 0;
@@ -448,9 +446,14 @@ cgd3 = (function() {
     xRel = 0;
     xTmp = 0;
     yTmp = 0;
-    // set global projection mode here:
+    // set initial global projection mode here:
     if (!mapProjection) { mapProjection = 'orthographic'; }
     globalProjection = d3.geo[mapProjection]();
+    // TODO: setting maxclipangle should be done by or derived
+    // cgd3.cycleMapProjection(0);
+    // 88 for orthographic
+    if (clipAngleMax === undefined || resetFlag) {clipAngleMax = 88; }
+    if (clipAngle === undefined || resetFlag) {clipAngle = clipAngleMax; }
     // init projections array
     projectionsArray = [];
   }
@@ -480,14 +483,14 @@ cgd3 = (function() {
     var newIndex, index, i,
       definedMapProjections = [
         //built in
-      ['mercator', 89],
-      ['orthographic', 90],
+      ['mercator'],
+      ['orthographic', 90, 'hasGradient'],
       ['albers', 120],
         //'albersUsa',
       ['azimuthalEqualArea'],
       ['azimuthalEquidistant'],
       ['equirectangular'],
-      ['gnomonic'],
+      ['gnomonic',87], // 90 is infinity
       ['stereographic'],
         //extended projection list
       ['aitoff'],
@@ -524,7 +527,7 @@ cgd3 = (function() {
       ['lagrange'],
       ['larrivee'],
       ['laskowski'],
-      ['littrow'],
+      ['littrow', 90],
       ['loximuthal'],
       ['miller'],
       ['modifiedStereographic'],
@@ -562,7 +565,7 @@ cgd3 = (function() {
       mapProjection = definedMapProjections[newIndex][0];
       if (definedMapProjections[newIndex][1] !== undefined) {
         clipAngleMax = definedMapProjections[newIndex][1];
-      } else {clipAngleMax = 89;}
+      } else {clipAngleMax = 180;}
       clipAngle = clipAngleMax;
       if (debugLevel > 0) {
         console.log('cycleMapProjection:',
@@ -572,7 +575,9 @@ cgd3 = (function() {
       // TODO Load size presets (clipAngle etc...) based on projection
       console.info('current Map projection: ' + mapProjection);
       clearCanvas(contextBackground);
-      gradientStyle = 2;
+      if (definedMapProjections[newIndex][2] === 'hasGradient') {
+        gradientStyle = 1;
+      } else {gradientStyle = 2;}
       drawAll();
     }
   };
@@ -1241,7 +1246,9 @@ cgd3 = (function() {
     var ctx, rot, prj;
     ctx = contextGlobe[i];
     clearCanvas(ctx);
-    if (showMirror) {drawGlobeBackside(ctx, i); }
+    if (showMirror) {
+      clipAngle = 89.99;
+      drawGlobeBackside(ctx, i); }
     if (mapProjection === 'bonneHeart') {bonneHeart(ctx, i);
       } else {
       rot = [-(rArrays[i][0]), -(rArrays[i][1]), rArrays[i][2]];
@@ -1357,7 +1364,7 @@ cgd3 = (function() {
         .clipExtent([[0, 0], [width, height]])
         .rotate(rot)
         .clipAngle(clipAngle).scale(r);
-      if (gradientStyle !== 0) {
+      if (gradientStyle !== 0 && mapProjection === 'orthographic') {
         path = d3.geo.path().projection(prj).context(ctx);
         // draw gradient
         if (gradientStyle === 1 && showGradientZoombased) {
