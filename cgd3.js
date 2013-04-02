@@ -937,6 +937,31 @@ cgd3 = (function() {
         drawLegendLine(contextInfo, 2, 'orange', xZero, yG);
         contextInfo.textAlign = 'left';
       }
+
+      if (showFeatureGlobe) {
+        contextInfo.font = '15pt Garamond';
+        //clearBackgroundRect(0, -2, 13, 1, contextInfo);
+        contextInfo.textAlign = 'left';
+        contextInfo.fillStyle = textColor;
+        contextInfo.fillText(
+          features.geometries[0].properties.name,
+          xZero,
+          getYtext(10)
+        );
+        contextInfo.font = '10pt Garamond';
+        pop = features.geometries[0].properties.pop_est;
+        if (pop > 1000000) {
+          popString = ('Pop: ' + Math.round(pop / 100000) / 10 + 'M');
+        } else if (pop > 10000) {
+          popString = ('Pop: ' + Math.round(pop / 100) / 10 + 'k');
+        }
+        else {popString = ('Pop: ' + pop);}
+        contextInfo.fillText(
+          popString,
+          xZero,
+          getYtext(11)
+        );
+      }
       // Draw Headline
       //showHeadline = 1;
       if (showHeadline) {
