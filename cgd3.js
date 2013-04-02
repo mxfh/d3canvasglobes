@@ -577,7 +577,11 @@ cgd3 = (function() {
       clearCanvas(contextBackground);
       if (definedMapProjections[newIndex][2] === 'hasGradient') {
         gradientStyle = 1;
-      } else {gradientStyle = 2;}
+      }
+      if (definedMapProjections[newIndex][2] === 'hasOutline') {
+        gradientStyle = 2;
+      }
+      else {gradientStyle = 0;}
       drawAll();
     }
   };
