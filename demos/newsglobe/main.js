@@ -12,5 +12,5 @@ require.config({
 });
 require(["d3", "topojson", "helpers", "cgd3"],
 	function () {
-		require(["d3projection", "../demos/newsglobe/demo.newsglobe"], function () { });  //runs demo.newsglobe
+		require(["d3projection", "../demos/newsglobe/demo"], function () { });
 	});
