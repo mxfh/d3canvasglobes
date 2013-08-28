@@ -15,7 +15,7 @@ require(["d3", "topojson", "helpers"],
 	function (d3, topojson) {
 		require(["d3projection"], function (d3) {
 			require(["cgd3"], function (cgd3) {
-				require(["../demos/kaleidoscope/kaleidoscope"], function () {});
+				require(["../demos/kaleidoscope/demo"], function () {});
 			});
 		});
 	});

@@ -17,7 +17,7 @@ function (d3, topojson) {
 	require(["d3projection"], function (d3) {
 		require(["wernerprojection"], function () {
 			require(["cgd3"], function (cgd3) {
-				require(["../demos/werner/werner"], function () {});
+				require(["../demos/werner/demo"], function () {});
 			});
 		});
 	});

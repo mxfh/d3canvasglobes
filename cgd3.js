@@ -100,14 +100,14 @@ cgd3 = (function() {
     gradientStyle = 1;
     showGradientZoombased = 1;
     showGraticule = 0;
-    showLines = 1;
+    showLines = 0;
     showBorders = 0;
     showCoastlines = 0;
     showFeatureGlobe = 0;
     showLakes = 0;
     showHelp = 1;
     showInfo = 1;
-    showPlaces = 1;
+    showPlaces = 0;
     momentumFlag = 1;
     isAnimated = 0;
     pi = Math.PI;
@@ -122,7 +122,7 @@ cgd3 = (function() {
     geometryAtLOD[0] = topojsonPath + 'ne_110m_world.json';
     geometryAtLOD[1] = topojsonPath + 'ne_50m_world.json';
     geometryAtLOD[2] = topojsonPath + 'ne_10m_world.json';
-    if (!featureData) {featureData = 'topojson/ne_110m_world.json'; }
+    if (!featureData) {featureData = topojsonPath + 'ne_50m_world.json'; }
     if (!featureJson) {featureJson = 'a0countrieslakes'; }
     if (!geometryLOD) {geometryLOD = 0; }
     if (!isFixedLOD) {isFixedLOD = 0; }
@@ -1068,6 +1068,7 @@ cgd3 = (function() {
       contextHelp.font = '12pt Garamond';
       lineNumber = 0;
       contextHelp.fillStyle = textColor;
+      helpText('Show/hide Help', 'H');
       helpText('Drag Mouse to move λ (lon) and φ (lat) of projection center');
       helpText('Click to go to position');
       helpText('also sets distance line end points');
@@ -1102,8 +1103,6 @@ cgd3 = (function() {
 
       helpText('Show/hide position Info', 'I');
       helpText('Reset all', 'R', 2);
-
-      helpText('Show/hide Help', 'H');
     }
   }
 
@@ -1513,6 +1512,8 @@ cgd3 = (function() {
                [pos[0],pos[1],0]
              ]);
              cgd3.toggleFeatures(1);
+             cgd3.hideAllButFirstGlobe();
+             cgd3.toggleHelp(0);
              firstFeatureLoad = false;
            }
          }
